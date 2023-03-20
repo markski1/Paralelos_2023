@@ -62,7 +62,7 @@ int main(int argc, char *argv[])
     }
   }
 
-  printf("MMBLK-SEC;%d;%d;%lf;%lf\n",n,bs,workTime,((double)2*n*n*n)/(workTime*1000000000));
+  printf("MMBLK-SEC\nN = %d; BS = %d\nworkTime = %lf; %lf\n",n,bs,workTime,((double)2*n*n*n)/(workTime*1000000000));
 
   return 0;
 }

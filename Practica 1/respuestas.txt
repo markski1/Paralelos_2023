@@ -21,5 +21,10 @@
 
 8. El uso de setters y getters no tiene sentido en este caso. Las llamadas a funcion agregan overhead innecesario. En la versión sin optimizaciones esto tiene un gran impacto, pero al usar optimizaciones esto parece ser solucionado.
    Se saca mejor provecho de la localidad de memorias recorriendo B por columnas.
+   No parecen haber quedado expresiones que se puedan refactorizar luego de haber hecho lo anterior.
+   Usar la variable local para luego sumarla parece hacer el rendimiento mucho peor. No estoy seguro de porque.
    
-   
+
+9. El algoritmo mmblk parece ser bastante mas rapido. En el sistema donde lo probe, el tamaño de bloque optimo parece ser 16. Imagino que es dependiente de su cache.
+
+10. 

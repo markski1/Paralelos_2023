@@ -36,11 +36,11 @@ int main(int argc,char*argv[]){
 
     //Inicializa las matrices A y B en 1, el resultado sera una matriz con todos sus valores en N
     for (i=0;i<N;i++){
-        for (j=0;j<N;j++){
+        for (j=0;j<N;j++) {
             A[i*N+j] = 1;
-            B[i+N*j] = 1;
+            B[i*N+j] = 1;
         }
-    }   
+    }
 
     //Realiza la multiplicacion
 
@@ -50,7 +50,7 @@ int main(int argc,char*argv[]){
         for (j=0;j<N;j++){
             C[i*N+j] = 0;
             for (k=0;k<N;k++){
-                C[i*N+j] = C[i*N+j] + A[i*N+k] * B[k+N*j];
+                C[i*N+j] = C[i*N+j] + (A[i*N+k] * B[k+N*j]);
             }
         }
     }   

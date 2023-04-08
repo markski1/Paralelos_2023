@@ -25,10 +25,10 @@ int main(int argc, char * argv[]) {
 
 	// alocaciones
 	A = (double *) malloc(sizeof(double) * NN);
-	B = (double *) malloc(sizeof(double) * NN);
+	B = (double *) malloc(sizeof(double) * NN); // columnas
 	C = (double *) malloc(sizeof(double) * NN);
 	R = (double *) malloc(sizeof(double) * NN);
-	D = (int *)    malloc(sizeof(double) * NN);
+	D = (int *)    malloc(sizeof(double) * NN); // columnas
 
 	// TODO: INICIAR TIMER
 
@@ -53,9 +53,17 @@ int main(int argc, char * argv[]) {
 	PromA = TotalA / NN;
 	PromB = TotalB / NN;
 
+	// cachear posiciones
+	int iPos, jPos;
+
+	double opCache = (MaxA * MaxB - MinA * MinB) / PromA * PromB;
+
 	for (i = 0; i < N; ++i) {
+		iPos = i * N;
 		for (j = 0; j < N; ++j) {
-			// TODO: calculo
+			jPos = j * N;
+			for (int k = 0; k < N; ++k)
+				R[iPos+j] = opCache * (A[iPos+k] * B[k+jPos]) + (C[iPos+k] * D[k+jPos]);
 			// (MaxA * MaxB - MinA * MinB) / PromA * PromB) 
 			// * [A * B] + [C * POW2(D)]
 		}

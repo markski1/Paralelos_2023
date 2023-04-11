@@ -1,9 +1,25 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <float.h>
+#include <math.h>
+#include <sys/time.h>
+
+double dwalltime();
+
+/**********Para calcular tiempo*************************************/
+double dwalltime()
+{
+	double sec;
+	struct timeval tv;
+
+	gettimeofday(&tv,NULL);
+	sec = tv.tv_sec + tv.tv_usec/1000000.0;
+	return sec;
+}
+/****************************************************************/
 
 int main(int argc, char * argv[]) {
-	if (argc != 1 || atoi(argv[1]) <= 0 ) {
+	if (argc <= 1 || atoi(argv[1]) <= 0 ) {
 		printf("Proveer N en args.");
 		return 1;
 	}
@@ -38,6 +54,10 @@ int main(int argc, char * argv[]) {
 		A[i] = B[i] = C[i] = 1.0;
 	}
 
+	double comienzo, fin;
+
+	comienzo = dwalltime();
+
 	// sacar max, min y prom
 	
 	for (i = 0; i < NN; ++i) {
@@ -63,13 +83,15 @@ int main(int argc, char * argv[]) {
 		for (j = 0; j < N; ++j) {
 			jPos = j * N;
 			for (int k = 0; k < N; ++k)
-				R[iPos+j] = opCache * (A[iPos+k] * B[k+jPos]) + (C[iPos+k] * D[k+jPos]);
+				R[iPos+j] = opCache * (A[iPos+k] * B[k+jPos]) + (C[iPos+k] * pow(D[k+jPos], 2));
 			// (MaxA * MaxB - MinA * MinB) / PromA * PromB) 
 			// * [A * B] + [C * POW2(D)]
 		}
 	}
 
-	// TODO: FINALIZAR TIMER
+	fin = dwalltime();
+
+	printf("Tiempo de ejecución: %.10lf \n", fin - comienzo);
 
 	return 0;
 }

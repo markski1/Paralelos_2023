@@ -3,8 +3,7 @@
 #include <float.h>
 
 double dwalltime();
-void matmulblks(double *a, double *b, double *c, int n, int bs);
-void blkmul(double *ablk, double *bblk, double *cblk, int n, int bs);
+void blkmul(double *ablk, double *bblk, double *cblk, int *dblk, double *abcd_blk, int n, int bs);
 
 int main(int argc, char * argv[]) {
 	if (argc != 3 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0 ) {
@@ -13,17 +12,19 @@ int main(int argc, char * argv[]) {
 	}
 
 	int N = atoi(argv[1]);
-	int bloque = atoi(argv[2]);
+	int BS = atoi(argv[2]);
 	int espaciosMatriz = N * N;
 
-	if (N % bloque != 0) {
-		printf("N debe ser multiplo de bloque.");
+	if (N % BS != 0) {
+		printf("N debe ser multiplo de bs.");
 		return 1;
 	}
 
 	// declararaciones
-	double *A, *B, *C, *R;
-	int *D;
+	double *A, *B, *C, *R,
+	       *ABCD;
+
+	int    *D, *DP2;
 
 	double PromA, PromB = 0.0;
 	double MaxA, MaxB = DBL_MIN;
@@ -31,31 +32,37 @@ int main(int argc, char * argv[]) {
 
 	double TotalA, TotalB = 0.0; // para sacar promedio
 
-	int i, j;
+	int i, j, k;
 
 	// alocaciones
-	A = (double *) malloc(sizeof(double) * espaciosMatriz);
-	B = (double *) malloc(sizeof(double) * espaciosMatriz); // columnas
-	C = (double *) malloc(sizeof(double) * espaciosMatriz);
-	R = (double *) malloc(sizeof(double) * espaciosMatriz);
-	D = (int *)    malloc(sizeof(double) * espaciosMatriz); // columnas
+	A =    (double *)  malloc(sizeof(double) * espaciosMatriz);
+	B =    (double *)  malloc(sizeof(double) * espaciosMatriz);
+	C =    (double *)  malloc(sizeof(double) * espaciosMatriz);
+	D =    (int *)     malloc(sizeof(double) * espaciosMatriz);
+	DP2 =  (int *)     malloc(sizeof(double) * espaciosMatriz); // cache d^2
+	ABCD = (double *)  malloc(sizeof(double) * espaciosMatriz); // resultado a*b + c*d^2
+	R =    (double *)  malloc(sizeof(double) * espaciosMatriz);
 
 	// TODO: INICIAR TIMER
 
 	// asignaciones
 	for (i = 0; i < espaciosMatriz; ++i) {
-		D[i] = (rand() % 40) + 1; // deben ser valores entre 1 y 40
+		D[i] = (rand() % 40) + 1; // valores al azar, entre 1 y 40
 		A[i] = B[i] = C[i] = 1.0;
+
+		ABCD[i] = 0.0;
+		R[i] = 0.0;
 	}
 
 	double tickComienzo, tickFin, op_MinMaxProm;
 
-	// cachear posiciones
 	int iPos, jPos;
+
+	// COMIENZA OPERACIONES MEDIDAS
 
 	tickComienzo = dwalltime();
 
-	// sacar max, min y prom
+	// sacar max, min y prom, y cachear D^2
 	
 	for (i = 0; i < espaciosMatriz; ++i) {
 		TotalA += A[i];
@@ -65,6 +72,8 @@ int main(int argc, char * argv[]) {
 		TotalB += B[i];
 		if (B[i] > MaxB) MaxB = B[i];
 		else if (B[i] < MinB) MinA = B[i];
+
+		DP2[i] = D[i] * D[i];
 	}
 
 	PromA = TotalA / espaciosMatriz;
@@ -72,53 +81,46 @@ int main(int argc, char * argv[]) {
 
 	op_MinMaxProm = (MaxA * MaxB - MinA * MinB) / PromA * PromB;
 
-	for (i = 0; i < N; ++i) {
+
+	// COMIENZA MULTIPLICACIÓN
+
+	for (i = 0; i < N; i += BS)
+	{
 		iPos = i * N;
-		for (j = 0; j < N; ++j) {
-			jPos = j * N;
-			for (int k = 0; k < N; ++k) {
-				R[iPos+j] = op_MinMaxProm * (A[iPos+k] * B[k+jPos]) + (C[iPos+k] * (D[k+jPos] * D[k+jPos]));
+		for (j = 0; j < N; j += BS)
+		{
+			jPos = j + N;
+			for (k = 0; k < N; k += BS)
+			{
+				blkmul(&A[iPos + k], &B[jPos + k], &C[iPos + k], &DP2[jPos + k], &ABCD[iPos + j], N, BS);
 			}
+			R[iPos + j] = op_MinMaxProm * ABCD[iPos + j];
 		}
 	}
 
 	tickFin = dwalltime();
 
-	printf("Tiempo de ejecución: %.10lf \n", tickFin - tickComienzo);
+	printf("Tiempo de ejecución: %.5lf \n", tickFin - tickComienzo);
 
 	return 0;
 }
 
-// COMIENZA FUNCIONES PARA MULTIPLICACIÓN POR BLOQUE
+// COMIENZA PARA MULTIPLICACIÓN POR BLOQUE
 
 
-void matmulblks(double *a, double *b, double *c, int n, int bs)
+void blkmul(double *ablk, double *bblk, double *cblk, int *dblk, double *abcd_blk, int n, int bs)
 {
-	int i, j, k;
-	
-	for (i = 0; i < n; i += bs)
-	{
-		for (j = 0; j < n; j += bs)
-		{
-			for  (k = 0; k < n; k += bs)
-			{
-				blkmul(&a[i*n + k], &b[j*n + k], &c[i*n + j], n, bs);
-			}
-		}
-	}
-}
-
-void blkmul(double *ablk, double *bblk, double *cblk, int n, int bs)
-{
-	int i, j, k;
+	int i, j, k, iPos, jPos;
 
 	for (i = 0; i < bs; i++)
 	{
+		iPos = i * n;
 		for (j = 0; j < bs; j++)
 		{
+			jPos = j * n;
 			for  (k = 0; k < bs; k++)
 			{
-				cblk[i*n + j] += ablk[i*n + k] * bblk[j*n + k];
+				abcd_blk[iPos + j] += (ablk[iPos + k] * bblk[jPos + k]) + (cblk[iPos + k] * dblk[jPos + k]);
 			}
 		}
 	}

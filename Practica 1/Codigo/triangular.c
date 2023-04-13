@@ -4,7 +4,7 @@
 int N=100;
 
 //Para calcular tiempo
-double dwalltime(){
+double dwalltime() {
    double sec;
    struct timeval tv;
 
@@ -36,8 +36,8 @@ int main(int argc,char* argv[]) {
    //La matriz BT se inicializa triangular inferior con 1
    //Esto permite que el resultado sean todos 1
    //La matriz C se inicializa en 0
-   for (i=0; i<N; i++){
-      for (j=0; j<N; j++){
+   for (i=0; i<N; i++) {
+      for (j=0; j<N; j++) {
 
          if (j<N-1) {
             A[i*N+j] = 0;

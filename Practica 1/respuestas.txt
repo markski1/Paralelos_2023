@@ -10,9 +10,9 @@
 
 5. La división parece ser ligeramente mas rápida.
 
-6. 	Quadratic1: La solución Double parece tener mayor precisión, mientras que la solución Float redondea a 2.0000;
-	Quadratic2: La solución Float parece ser algo mas lenta que la solución Double.
-	Quadratic3: La solución Float es bastante mas rapida que la solución Double.
+6. Quadratic1: La solución Double parece tener mayor precisión, mientras que la solución Float redondea a 2.0000;
+   Quadratic2: La solución Float parece ser algo mas lenta que la solución Double.
+   Quadratic3: La solución Float es bastante mas rapida que la solución Double.
 
 	Diferencias entre q2 y q3: q3 parece usar constantes y funciones especiales para Float, lo que probablemente
 	le da el mejor rendimiento.

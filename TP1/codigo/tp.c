@@ -24,8 +24,7 @@ int main(int argc, char * argv[]) {
 	printf("Inicializando para operación con matrices de %ix%i ; block size de %i \n", N, N, BS);
 
 	// declararaciones
-	double *A, *B, *C, *R,
-	       *ABCD;
+	double *A, *B, *C, *R;
 
 	int    *D, *DP2;
 
@@ -35,15 +34,15 @@ int main(int argc, char * argv[]) {
 
 	double TotalA, TotalB = 0.0; // para sacar promedio
 
-	int i, j, k;
+	int    i, j, k; // para iteraciónes
 
 	// alocaciones
-	A =    (double *)  malloc(sizeof(double) * espaciosMatriz);
-	B =    (double *)  malloc(sizeof(double) * espaciosMatriz);
-	C =    (double *)  malloc(sizeof(double) * espaciosMatriz);
-	D =    (int *)     malloc(sizeof(double) * espaciosMatriz);
-	DP2 =  (int *)     malloc(sizeof(double) * espaciosMatriz); // cache d^2
-	R =    (double *)  malloc(sizeof(double) * espaciosMatriz);
+	A =   (double *)  malloc(sizeof(double) * espaciosMatriz);
+	B =   (double *)  malloc(sizeof(double) * espaciosMatriz);
+	C =   (double *)  malloc(sizeof(double) * espaciosMatriz);
+	D =   (int *)     malloc(sizeof(double) * espaciosMatriz);
+	DP2 = (int *)     malloc(sizeof(double) * espaciosMatriz); // cache d^2
+	R =   (double *)  malloc(sizeof(double) * espaciosMatriz);
 
 	// TODO: INICIAR TIMER
 
@@ -122,8 +121,7 @@ int main(int argc, char * argv[]) {
 	return 0;
 }
 
-// COMIENZA PARA MULTIPLICACIÓN POR BLOQUE
-
+// COMIENZA FUNCIONES PARA MULTIPLICACIÓN POR BLOQUE
 
 void mul_bloques(double *A_blk, double *B_blk, double *C_blk, int *D_blk, int cachedOp, double *R_blk, int n, int bs)
 {
@@ -179,3 +177,10 @@ double dwalltime()
 	return sec;
 }
 /****************************************************************/
+
+/*
+
+- El escalar debe primero multipliarse por A x B y despues eso se suma a C * D².
+- D se debe cachear de otra manera.
+
+*/

@@ -3,9 +3,8 @@
 #include <float.h>
 
 double dwalltime();
-void blkmm_parte1(double *ablk, double *bblk, double *cblk, int cachedOp, int n, int bs);
-void blkmm_parte2(double *ablk, int *bblk, double *cblk, int n, int bs);
-void blkmul_int(int *ablk, int *bblk, int *cblk, int n, int bs);
+void blkmm_parte1(double *A_blk, double *B_blk, double *R_blk, int cachedOp, int n, int bs);
+void blkmm_parte2(double *C_blk, int *D_blk, double *R_blk, int *D_2, int n, int bs);
 
 int main(int argc, char * argv[]) {
 	if (argc != 3 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0 ) {
@@ -27,7 +26,7 @@ int main(int argc, char * argv[]) {
 	// declararaciones
 	double *A, *B, *C, *R;
 
-	int    *D, *DP2;
+	int    *D;
 
 	double PromA, PromB = 0.0;
 	double MaxA, MaxB = DBL_MIN;
@@ -41,9 +40,10 @@ int main(int argc, char * argv[]) {
 	A =   (double *)  malloc(sizeof(double) * espaciosMatriz);
 	B =   (double *)  malloc(sizeof(double) * espaciosMatriz);
 	C =   (double *)  malloc(sizeof(double) * espaciosMatriz);
-	D =   (int *)     malloc(sizeof(double) * espaciosMatriz);
-	DP2 = (int *)     malloc(sizeof(double) * espaciosMatriz); // cache d^2
 	R =   (double *)  malloc(sizeof(double) * espaciosMatriz);
+	D =   (int *)     malloc(sizeof(int)    * espaciosMatriz);
+	
+	int DP2[41]; // cache d^2
 
 	// TODO: INICIAR TIMER
 
@@ -52,16 +52,20 @@ int main(int argc, char * argv[]) {
 		D[i] = (rand() % 40) + 1; // valores al azar, entre 1 y 40
 
 		A[i] = B[i] = C[i] = 1.0;
-
-		DP2[i] = 0;
 		R[i] = 0.0;
+	}
+
+	// Cachear un arreglo con pow2 D
+	// pueden ser de 1 a 40, y C es zero-indexed, asi que...
+	for (i = 0; i < 41; ++i) {
+		DP2[i] = i * i;
 	}
 
 	double tickComienzo, tickFin, op_MinMaxProm;
 
 	int iPos, jPos;
 
-	printf("Inicializado. Comienza operación.\n");
+	printf("Listo.\nComienza operación...\n");
 
 	// COMIENZA OPERACIONES MEDIDAS
 
@@ -87,20 +91,6 @@ int main(int argc, char * argv[]) {
 
 	// COMIENZA MULTIPLICACIÓN
 
-	// Primero cachear todo D²
-	for (i = 0; i < N; i += BS)
-	{
-		iPos = i * N;
-		for (j = 0; j < N; j += BS)
-		{			
-			for (k = 0; k < N; k += BS)
-			{
-				//                          j solo se usa una vez asi que parece contraintuitivo cachearlo
-				blkmul_int(&D[iPos + k], &D[j*N + k], &DP2[iPos + j], N, BS);
-			}
-		}
-	}
-
 	for (i = 0; i < N; i += BS)
 	{
 		iPos = i * N;
@@ -112,7 +102,7 @@ int main(int argc, char * argv[]) {
 				// blkmm_parte1 guardara en R el resultado de Escalar * [A * B].
 				blkmm_parte1(&A[iPos + k], &B[jPos + k], &R[iPos + j], op_MinMaxProm, N, BS);
 				// blkmm_parte2 calculara el resultado de C * D² y se lo sumara a R (el cual ya contiene Escalar * [A * B]), completando la operación.
-				blkmm_parte2(&C[iPos + k], &DP2[jPos + j], &R[iPos + j], N, BS);
+				blkmm_parte2(&C[iPos + k], &D[jPos + k], &R[iPos + j], DP2, N, BS);
 			}
 		}
 	}
@@ -126,69 +116,52 @@ int main(int argc, char * argv[]) {
 
 // COMIENZA FUNCIONES PARA MULTIPLICACIÓN POR BLOQUE
 
-void blkmm_parte1(double *ablk, double *bblk, double *cblk, int cachedOp, int n, int bs)
+//                        A              B              R         Escalar
+void blkmm_parte1(double *A_blk, double *B_blk, double *R_blk, int cachedOp, int n, int bs)
 {
 	int i, j, k,
-	    iPos;
+	    iPos, jPos;
 
 	for (i = 0; i < bs; i++)
 	{
 		iPos = i*n;
 		for (j = 0; j < bs; j++)
 		{
+			jPos = j*n;
 			for (k = 0; k < bs; k++)
 			{
-				cblk[iPos + j] += ablk[iPos + k] * bblk[j*n + k];
+				R_blk[iPos + j] += A_blk[iPos + k] * B_blk[jPos + k];
 			}
 			// una vez arriba hecho A * B, multiplicarle el escalar
-			cblk[iPos + j] *= cachedOp;
+			R_blk[iPos + j] *= cachedOp;
 		}
 	}
 }
 
-void blkmm_parte2(double *ablk, int *bblk, double *cblk, int n, int bs)
+//                        C           D              R           Cache D²
+void blkmm_parte2(double *C_blk, int *D_blk, double *R_blk, int *D_2, int n, int bs)
 {
 	int i, j, k,
-	    iPos;
+	    iPos, jPos;
 
 	for (i = 0; i < bs; i++)
 	{
 		iPos = i*n;
 		for (j = 0; j < bs; j++)
 		{
+			jPos = j*n;
 			for (k = 0; k < bs; k++)
 			{
-				cblk[iPos + j] += ablk[iPos + k] * bblk[j*n + k];
+				R_blk[iPos + j] += C_blk[iPos + k] * D_2[ D_blk[jPos + k] ];
 			}
 		}
 	}
 }
-
-void blkmul_int(int *ablk, int *bblk, int *cblk, int n, int bs)
-{
-	int i, j, k,
-	    iPos;
-
-	for (i = 0; i < bs; i++)
-	{
-		iPos = i*n;
-		for (j = 0; j < bs; j++)
-		{
-			for (k = 0; k < bs; k++)
-			{
-				cblk[iPos + j] += ablk[iPos + k] * bblk[j*n + k];
-			}
-		}
-	}
-}
-    
-/*****************************************************************/
 
 // COMIENZA HELPER PARA CALCULAR TIEMPO
 
 #include <sys/time.h>
 
-/**********Para calcular tiempo*************************************/
 double dwalltime()
 {
 	double sec;
@@ -198,11 +171,3 @@ double dwalltime()
 	sec = tv.tv_sec + tv.tv_usec/1000000.0;
 	return sec;
 }
-/****************************************************************/
-
-/*
-
-- El escalar debe primero multipliarse por A x B y despues eso se suma a C * D².
-- D se debe cachear de otra manera.
-
-*/

@@ -25,10 +25,9 @@ int main(int argc, char * argv[]) {
 
 	// declararaciones
 	double *A, *B, *C, *R;
-
 	int    *D;
 
-	double PromA, PromB = 0.0;
+	double PromA, PromB;
 	double MaxA, MaxB = DBL_MIN;
 	double MinA, MinB = DBL_MAX;
 
@@ -37,15 +36,13 @@ int main(int argc, char * argv[]) {
 	int    i, j, k; // para iteraciónes
 
 	// alocaciones
-	A =   (double *)  malloc(sizeof(double) * espaciosMatriz);
-	B =   (double *)  malloc(sizeof(double) * espaciosMatriz);
-	C =   (double *)  malloc(sizeof(double) * espaciosMatriz);
-	R =   (double *)  malloc(sizeof(double) * espaciosMatriz);
-	D =   (int *)     malloc(sizeof(int)    * espaciosMatriz);
+	A = (double *) malloc(sizeof(double) * espaciosMatriz);
+	B = (double *) malloc(sizeof(double) * espaciosMatriz);
+	C = (double *) malloc(sizeof(double) * espaciosMatriz);
+	R = (double *) malloc(sizeof(double) * espaciosMatriz);
+	D = (int *)    malloc(sizeof(int)    * espaciosMatriz);
 	
 	int DP2[41]; // cache d^2
-
-	// TODO: INICIAR TIMER
 
 	// asignaciones
 	for (i = 0; i < espaciosMatriz; ++i) {
@@ -96,7 +93,7 @@ int main(int argc, char * argv[]) {
 		iPos = i * N;
 		for (j = 0; j < N; j += BS)
 		{
-			jPos = j + N;
+			jPos = j * N;
 			for (k = 0; k < N; k += BS)
 			{
 				// blkmm_parte1 guardara en R el resultado de Escalar * [A * B].

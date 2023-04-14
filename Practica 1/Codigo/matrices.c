@@ -7,7 +7,7 @@
 int N=256;
 
 //Para calcular tiempo
-double dwalltime(){
+double dwalltime() {
     double sec;
     struct timeval tv;
 
@@ -16,7 +16,7 @@ double dwalltime(){
     return sec;
 }
 
-int main(int argc,char*argv[]){
+int main(int argc,char*argv[]) {
     double *A,*B,*C;
     int i,j,k;
     int check=1;
@@ -35,8 +35,8 @@ int main(int argc,char*argv[]){
     C = (double*)malloc(sizeof(double)*N*N);
 
     //Inicializa las matrices A y B en 1, el resultado sera una matriz con todos sus valores en N
-    for (i=0;i<N;i++){
-        for (j=0;j<N;j++) {
+    for (i=0; i<N; i++) {
+        for (j=0; j<N; j++) {
             A[i*N+j] = 1;
             B[i*N+j] = 1;
         }
@@ -46,10 +46,10 @@ int main(int argc,char*argv[]){
 
     timetick = dwalltime();
 
-    for (i=0;i<N;i++){
-        for (j=0;j<N;j++){
+    for (i=0; i<N; i++) {
+        for (j=0; j<N; j++) {
             C[i*N+j] = 0;
-            for (k=0;k<N;k++){
+            for (k=0; k<N; k++) {
                 C[i*N+j] = C[i*N+j] + (A[i*N+k] * B[k+N*j]);
             }
         }
@@ -58,8 +58,8 @@ int main(int argc,char*argv[]){
 	printf("Multiplicacion de matrices de %dx%d. Tiempo en segundos %f\n",N,N, dwalltime() - timetick);
 
 	//Verifica el resultado
-	for (i=0; i<N; i++){
-		for (j=0; j<N; j++){
+	for (i=0; i<N; i++) {
+		for (j=0; j<N; j++) {
 			check = check && (C[i*N+j] == N);
 		}
 	}   

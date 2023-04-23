@@ -2,7 +2,7 @@
 #include <stdlib.h>
 #include <math.h>
 
-#define TIMES 10
+#define TIMES 1000
 #define N 10000000
 
 #define FA 1.0f
@@ -73,8 +73,8 @@ int main(void)
 	timed = dwalltime() - tick;    
 
 	
-	printf("Tiempo requerido solucion Double: %f\n",timed);
-	printf("Tiempo requerido solucion Float: %f\n",timef);
+	printf("Double: %f\n",timed);
+	printf("Float: %f\n",timef);
 
 	free(fa);
 	free(fb);

@@ -3,8 +3,8 @@
 #include <float.h>
 
 double dwalltime();
-void blkmm_parte1(double *A_blk, double *B_blk, double *R_blk, double escalar, int n, int bs);
-void blkmm_parte2(double *C_blk, int *D_blk, double *R_blk, double *D_2, int n, int bs);
+void blkmm_parte1(double *A_blk, double *B_blk, double *R_blk, int n, int bs);
+void blkmm_parte2(double *C_blk, int *D_blk, double *CB_blk, double *D_2, int n, int bs);
 
 int main(int argc, char * argv[]) {
 	if (argc != 3 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0 ) {
@@ -24,25 +24,25 @@ int main(int argc, char * argv[]) {
 	printf("Inicializando para operación con matrices de %ix%i ; block size de %i \n", N, N, BS);
 
 	// declararaciones
-	double *A, *B, *C, *R;
+	double *A, *B, *C, *R, *CD, *DP2;
 	int    *D;
 
 	double PromA, PromB;
 	double MaxA = DBL_MIN, MaxB = DBL_MIN;
 	double MinA = DBL_MIN, MinB = DBL_MAX;
 
-	double TotalA, TotalB = 0.0; // para sacar promedio
+	double TotalA = 0.0, TotalB = 0.0; // para sacar promedio
 
 	int    i, j, k; // para iteraciónes
 
 	// alocaciones
-	A  = (double *) malloc(sizeof(double) * espaciosMatriz);
-	B  = (double *) malloc(sizeof(double) * espaciosMatriz);
-	C  = (double *) malloc(sizeof(double) * espaciosMatriz);
-	R  = (double *) malloc(sizeof(double) * espaciosMatriz);
-	D  = (int *)    malloc(sizeof(int)    * espaciosMatriz);
-	
-	double DP2[41]; // cache d^2
+	A   = (double *) malloc(sizeof(double) * espaciosMatriz);
+	B   = (double *) malloc(sizeof(double) * espaciosMatriz);
+	C   = (double *) malloc(sizeof(double) * espaciosMatriz);
+	R   = (double *) malloc(sizeof(double) * espaciosMatriz);
+	CD  = (double *) malloc(sizeof(double) * espaciosMatriz); // resultado de C*D²
+	D   = (int *)    malloc(sizeof(int)    * espaciosMatriz);
+	DP2 = (double *) malloc(sizeof(double) *        41      ); // cache d^2 ; + 1 espacio para evitar overflow
 
 	// asignaciones
 	for (i = 0; i < espaciosMatriz; ++i) {
@@ -96,8 +96,8 @@ int main(int argc, char * argv[]) {
 			jPos = j * N;
 			for (k = 0; k < N; k += BS)
 			{
-				// blkmm_parte1 guardara en R el resultado de Escalar * [A * B].
-				blkmm_parte1(&A[iPos + k], &B[jPos + k], &R[iPos + j], escalar, N, BS);
+				// blkmm_parte1 guardara en R el resultado de [A * B].
+				blkmm_parte1(&A[iPos + k], &B[jPos + k], &R[iPos + j], N, BS);
 			}
 		}
 	}
@@ -111,9 +111,14 @@ int main(int argc, char * argv[]) {
 			for (k = 0; k < N; k += BS)
 			{
 				// blkmm_parte2 calculara el resultado de C * D² y lo sumara a R, completando la operación.
-				blkmm_parte2(&C[iPos + k], &D[jPos + k], &R[iPos + j], DP2, N, BS);
+				blkmm_parte2(&C[iPos + k], &D[jPos + k], &CD[iPos + j], DP2, N, BS);
 			}
 		}
+	}
+
+	for (i = 0; i < N; ++i) {
+		R[i] = R[i] * escalar;
+		R[i] = R[i] + CD[i];
 	}
 
 	tickFin = dwalltime();
@@ -125,8 +130,8 @@ int main(int argc, char * argv[]) {
 
 // COMIENZA FUNCIONES PARA MULTIPLICACIÓN POR BLOQUE
 
-//                        A              B              R             Escalar
-void blkmm_parte1(double *A_blk, double *B_blk, double *R_blk, double escalar, int n, int bs)
+//                        A              B              R
+void blkmm_parte1(double *A_blk, double *B_blk, double *R_blk, int n, int bs)
 {
 	int i, j, k,
 	    iPos, jPos;
@@ -144,13 +149,13 @@ void blkmm_parte1(double *A_blk, double *B_blk, double *R_blk, double escalar, i
 			{
 				registro += A_blk[iPos + k] * B_blk[jPos + k];
 			}
-			R_blk[iPos + j] = registro * escalar;
+			R_blk[iPos + j] = registro;
 		}
 	}
 }
 
 //                        C           D              CD             Cache D²
-void blkmm_parte2(double *C_blk, int *D_blk, double *R_blk, double *D_2, int n, int bs)
+void blkmm_parte2(double *C_blk, int *D_blk, double *CD_blk, double *D_2, int n, int bs)
 {
 	int i, j, k,
 	    iPos, jPos;
@@ -168,7 +173,7 @@ void blkmm_parte2(double *C_blk, int *D_blk, double *R_blk, double *D_2, int n, 
 			{
 				registro += C_blk[iPos + k] * D_2[ D_blk[jPos + k] ];
 			}
-			R_blk[iPos + j] += registro; // SUMAR, ya que R previamente contiene "ESCALAR * [A * B]"
+			CD_blk[iPos + j] = registro;
 		}
 	}
 }

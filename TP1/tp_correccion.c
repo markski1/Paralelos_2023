@@ -4,7 +4,7 @@
 
 double dwalltime();
 void blkmm_parte1(double *A_blk, double *B_blk, double *R_blk, int n, int bs);
-void blkmm_parte2(double *C_blk, int *D_blk, double *CB_blk, double *D_2, int n, int bs);
+void blkmm_parte2(double *C_blk, int *D_blk, double *R_blk, double *D_2, int n, int bs);
 
 int main(int argc, char * argv[]) {
 	if (argc != 3 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0 ) {
@@ -40,7 +40,6 @@ int main(int argc, char * argv[]) {
 	B   = (double *) malloc(sizeof(double) * espaciosMatriz);
 	C   = (double *) malloc(sizeof(double) * espaciosMatriz);
 	R   = (double *) malloc(sizeof(double) * espaciosMatriz);
-	CD  = (double *) malloc(sizeof(double) * espaciosMatriz); // resultado de C*D²
 	D   = (int *)    malloc(sizeof(int)    * espaciosMatriz);
 	DP2 = (double *) malloc(sizeof(double) *        41      ); // cache d^2 ; + 1 espacio para evitar overflow
 
@@ -88,6 +87,7 @@ int main(int argc, char * argv[]) {
 
 	// COMIENZA MULTIPLICACIÓN
 
+	// Paso 1: Multiplicar A * B, guardar en R.
 	for (i = 0; i < N; i += BS)
 	{
 		iPos = i * N;
@@ -96,12 +96,17 @@ int main(int argc, char * argv[]) {
 			jPos = j * N;
 			for (k = 0; k < N; k += BS)
 			{
-				// blkmm_parte1 guardara en R el resultado de [A * B].
 				blkmm_parte1(&A[iPos + k], &B[jPos + k], &R[iPos + j], N, BS);
 			}
 		}
 	}
 
+	// Paso 2: Multiplica R por el escalar.
+	for (i = 0; i < espaciosMatriz; ++i) {
+		R[i] = R[i] * escalar;
+	}
+
+	// Paso 3: Multiplicar C * Pot2(D); sumar a R
 	for (i = 0; i < N; i += BS)
 	{
 		iPos = i * N;
@@ -110,16 +115,11 @@ int main(int argc, char * argv[]) {
 			jPos = j * N;
 			for (k = 0; k < N; k += BS)
 			{
-				// blkmm_parte2 calculara el resultado de C * D² y lo sumara a R, completando la operación.
-				blkmm_parte2(&C[iPos + k], &D[jPos + k], &CD[iPos + j], DP2, N, BS);
+				blkmm_parte2(&C[iPos + k], &D[jPos + k], &R[iPos + j], DP2, N, BS);
 			}
 		}
 	}
-
-	for (i = 0; i < N; ++i) {
-		R[i] = R[i] * escalar;
-		R[i] = R[i] + CD[i];
-	}
+	
 
 	tickFin = dwalltime();
 
@@ -154,8 +154,8 @@ void blkmm_parte1(double *A_blk, double *B_blk, double *R_blk, int n, int bs)
 	}
 }
 
-//                        C           D              CD             Cache D²
-void blkmm_parte2(double *C_blk, int *D_blk, double *CD_blk, double *D_2, int n, int bs)
+//                        C           D              CD             Cache Pot2(D)
+void blkmm_parte2(double *C_blk, int *D_blk, double *R_blk, double *D_2, int n, int bs)
 {
 	int i, j, k,
 	    iPos, jPos;
@@ -173,7 +173,7 @@ void blkmm_parte2(double *C_blk, int *D_blk, double *CD_blk, double *D_2, int n,
 			{
 				registro += C_blk[iPos + k] * D_2[ D_blk[jPos + k] ];
 			}
-			CD_blk[iPos + j] = registro;
+			R_blk[iPos + j] += registro; // SUMA, no igual, porque ya tenemos R con Escalar * [A * B],
 		}
 	}
 }

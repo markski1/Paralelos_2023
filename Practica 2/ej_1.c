@@ -4,14 +4,37 @@
 
 #include "funcs_base.h"
 
+void initvalmat(double *mat, int n, double val, int transpose)
+{
+  int i, j;      /* Indexes */
+
+	if (transpose == 0) {
+	  for (i = 0; i < n; i++)
+	  {
+		for (j = 0; j < n; j++)
+		{
+		  mat[i*n + j] = val;
+		}
+	  }
+	} else {
+	  for (i = 0; i < n; i++)
+	  {
+		for (j = 0; j < n; j++)
+		{
+		  mat[j*n + i] = val;
+		}
+	  }
+	}
+}
+
 void * hiloMultiplicar(void *ptr);
 void blkmm(double *A_blk, double *B_blk, double *C_blk, int n, int bs);
 
 double *A, *B, *C;
-int N, BS, NUM_THREADS, espaciosMatriz, filasHilo;
+int N, BS, NUM_THREADS, espaciosMatriz;
 
 int main(int argc, char *argv[]) {
-	if (argc != 4 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0 || atoi(argv[3]) < 2 ) {
+	if (argc != 4 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0) {
 		printf("Proveer N, blocksize y T en args.\n");
 		return 1;
 	}
@@ -20,8 +43,6 @@ int main(int argc, char *argv[]) {
 	BS = atoi(argv[2]);
 	NUM_THREADS = atoi(argv[3]);
 
-	filasHilo = N / NUM_THREADS;
-	
 	espaciosMatriz = N * N;
 
 	pthread_attr_t attr;
@@ -43,9 +64,13 @@ int main(int argc, char *argv[]) {
 
 
 	for (i = 0; i < espaciosMatriz; ++i) {
-		A[i] = B[i] = 1.0;
+		A[i] = 1.0;
+		B[i] = 2.0;
 		C[i] = 0.0;
 	}
+
+	initvalmat(A, N, 1.0, 0);
+	initvalmat(B, N, 2.0, 0);
 
 	double tickComienzo, tickFin;
 
@@ -64,6 +89,10 @@ int main(int argc, char *argv[]) {
 
 	tickFin = dwalltime();
 
+
+	for (i = 0; i < N*N; i++) {
+		printf("%i = %lf \n", i, C[i]);
+	}
 	printf("Tiempo: %.5lf \n", tickFin - tickComienzo);
 }
 
@@ -71,12 +100,14 @@ void * hiloMultiplicar(void *ptr) {
 	int id;
 	id = * ((int *) ptr);
 
-	int start = id * filasHilo;
-	int end = start + filasHilo;
+	int start = id * (N / NUM_THREADS);
+	int end = start + (N / NUM_THREADS);
 
 	int iPos, jPos;
 
 	int i, j, k;
+
+	printf("start %i ; end %i \n", start, end);
 
 	for (i = start; i < end; i += BS)
 	{

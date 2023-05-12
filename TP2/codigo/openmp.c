@@ -7,8 +7,8 @@
 #include "funcs_base.h"
 
 int main(int argc, char * argv[]) {
-	if (argc > 5 || argc < 3 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0 || atoi(argv[3]) <= 0) {
-		printf("Proveer N, blocksize (opcionalmente un '1' para skippear comparación) en args.\n");
+	if (argc > 5 || argc < 3 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0) {
+		printf("Proveer N, blocksize (opcionalmente NUM_THREADS y un '1' para skippear comparación) en args.\n");
 		return 1;
 	}
 
@@ -93,6 +93,7 @@ int main(int argc, char * argv[]) {
 			if (B[i] > MaxB) MaxB = B[i];
 			if (B[i] < MinB) MinB = B[i];
 		}
+		// barrera implicita
 	
 		#pragma omp single
 		{
@@ -102,6 +103,7 @@ int main(int argc, char * argv[]) {
 			// Aca quedara cacheado el escalar
 			escalar = (MaxA * MaxB - MinA * MinB) / (PromA * PromB);
 		}
+		// barrera implicita
 
 		// COMIENZA MULTIPLICACIÓN
 

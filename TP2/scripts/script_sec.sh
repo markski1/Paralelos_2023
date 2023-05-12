@@ -3,4 +3,4 @@
 #SBATCH --exclusive
 #SBATCH -o directorioSalida/output_sec.txt
 #SBATCH -e directorioSalida/errores_sec.txt
-./sec 2048 8
+./sec 4096 8

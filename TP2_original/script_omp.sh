@@ -3,4 +3,5 @@
 #SBATCH --exclusive
 #SBATCH -o directorioSalida/output.txt
 #SBATCH -e directorioSalida/errores.txt
-./pth 2048 8 4
+export OMP_NUM_THREADS=$TP2_THREADS
+./omp $TP2_N $TP2_BS

@@ -1,8 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <float.h>
 #include <pthread.h>
-#include <stdbool.h>
+#include <float.h>
 
 #include "funcs_base.h"
 
@@ -25,7 +24,7 @@ pthread_barrier_t BAR;
 void * hiloOperacion(void *ptr);
 
 int main(int argc, char * argv[]) {
-	if (argc > 5 || argc < 4 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0 ) {
+	if (argc != 4 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0 ) {
 		printf("Proveer N, blocksize y NUM_THREADS en args.\n");
 		return 1;
 	}
@@ -39,10 +38,6 @@ int main(int argc, char * argv[]) {
 		printf("N debe ser multiplo de bs.\n");
 		return 1;
 	}
-
-	bool comparar = true;
-	// Si se especificara un '1' extra, no se compara con sec.
-	if (argc == 5 && atoi(argv[4]) == 1) comparar = false;
 
 	pthread_attr_t attr;
 	pthread_t threads[NUM_THREADS];
@@ -98,38 +93,9 @@ int main(int argc, char * argv[]) {
 
 	tickFin = dwalltime();
 
-	printf("\n==============\nFinaliza operación. Tiempo: %.5lf \n===========\nGenerando y comparando con cache secuencial...\n", tickFin - tickComienzo);
+	printf("\n==============\nFinaliza operación. Tiempo: %.5lf \n===========\nComparando con cache secuencial...\n", tickFin - tickComienzo);
 
-
-	if (comparar == false) {
-		printf("==============\nPor pedido del usuario, se salta la comprobación.\n");
-		return 0;
-	}
-
-
-	// y generar un R en R2 con el secuencial
-	// se usará para comparar.
-	
-	double *R2 = (double *) malloc(sizeof(double) * espaciosMatriz);
-
-	SecuencialEnRDada(N, BS, A, B, C, D, R2);
-
-	bool error = false;
-
-	for (i = 0; i < espaciosMatriz; ++i) {
-		if (R[i] != R2[i]) {
-			printf("ERROR EN POSICION %i: R original: %lf ; R secuencial: %lf \n", i, R[i], R2[i]);
-			error = true;
-			break;
-		}
-	}
-
-	if (!error) {
-		printf("==============\nExito, los valores son iguales a los del secuencial.\n");
-	}
-	else {
-		printf("==============\nError, los valores no son iguales a los del secuencial.\n");
-	}
+	CompararCache(R, N);
 
 	return 0;
 }

@@ -2,18 +2,29 @@
 #include <stdlib.h>
 #include <float.h>
 #include <omp.h>
+#include <stdbool.h>
 
 #include "funcs_base.h"
 
 int main(int argc, char * argv[]) {
-	if (argc != 4 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0 || atoi(argv[3]) <= 0) {
-		printf("Proveer N, blocksize y NUM_THREADS en args.\n");
+	if (argc > 5 || argc < 3 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0 || atoi(argv[3]) <= 0) {
+		printf("Proveer N, blocksize (opcionalmente un '1' para skippear comparación) en args.\n");
 		return 1;
 	}
 
 	int N = atoi(argv[1]);
 	int BS = atoi(argv[2]);
-	omp_set_num_threads(atoi(argv[3]));
+
+	bool comparar = true;
+
+	// Si se especifica un 3er parametro, se usa como numero de threads.
+	// Caso contrario se asume lo que diga el sistema (por ejemplo el script sbatch)
+	if (argc >= 4) {
+		omp_set_num_threads(atoi(argv[3]));
+		// Si se especificara un '1' extra, no se compara con sec.
+		if (argc == 5 && atoi(argv[4]) == 1) comparar = false;
+	}
+
 	int espaciosMatriz = N * N;
 
 	if (N % BS != 0) {
@@ -111,11 +122,12 @@ int main(int argc, char * argv[]) {
 		// arriba se especifica nowait, ya que la multiplicación del escalar se hara sobre la región de R indicada.
 
 		// Paso 2: Multiplica R por el escalar.
-		#pragma omp for private(i) schedule(static, BS) nowait
+		#pragma omp for private(i) schedule(static, BS)
 		for (i = 0; i < espaciosMatriz; ++i) {
 			R[i] = R[i] * escalar;
 		}
-		// arriba se especifica nowait, ya que la multiplicación se hara, de nuevo, sobre los espacios de R ya manejados
+		// arriba NO se especifica nowait, produce resultados erroneos. Pense que la misma regla aplicaria,
+		// pero se ve que OpenMP no distrubye a i de la misma forma abajo.
 
 		// Paso 3: Multiplicar C * Pot2(D); sumar a R
 		#pragma omp for private(i, j, k, iPos, jPos) 
@@ -136,7 +148,36 @@ int main(int argc, char * argv[]) {
 	
 	tickFin = dwalltime();
 
-	printf("Finaliza operación. Tiempo: %.5lf \n", tickFin - tickComienzo);
+	printf("\n==============\nFinaliza operación. Tiempo: %.5lf \n===========\nGenerando y comparando con cache secuencial...\n", tickFin - tickComienzo);
+
+	if (comparar == false) {
+		printf("==============\nPor pedido del usuario, se salta la comprobación.\n");
+		return 0;
+	}
+
+	// y generar un R en R2 con el secuencial
+	// se usará para comparar.
+	
+	double *R2 = (double *) malloc(sizeof(double) * espaciosMatriz);
+
+	SecuencialEnRDada(N, BS, A, B, C, D, R2);
+
+	bool error = false;
+
+	for (i = 0; i < espaciosMatriz; ++i) {
+		if (R[i] != R2[i]) {
+			printf("ERROR EN POSICION %i: R original: %lf ; R secuencial: %lf \n", i, R[i], R2[i]);
+			error = true;
+			break;
+		}
+	}
+
+	if (!error) {
+		printf("==============\nExito, los valores son iguales a los del secuencial.\n");
+	}
+	else {
+		printf("==============\nError, los valores no son iguales a los del secuencial.\n");
+	}
 
 	return 0;
 }

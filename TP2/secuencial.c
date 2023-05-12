@@ -121,7 +121,9 @@ int main(int argc, char * argv[]) {
 
 	tickFin = dwalltime();
 
-	printf("Finaliza operación. Tiempo: %.5lf \n", tickFin - tickComienzo);
+	printf("\n==============\nFinaliza operación. Tiempo: %.5lf \n===========\nEscribiendo a cache...", tickFin - tickComienzo);
+
+	EscribirCache(R, N);
 
 	return 0;
 }

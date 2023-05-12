@@ -19,10 +19,9 @@ double TotalA = 0.0, TotalB = 0.0;
 double escalar;
 
 pthread_mutex_t MTX;
+pthread_barrier_t BAR;
 
-void * hiloMultiplicar(void *ptr);
-void * hiloPromedios(void *ptr);
-
+void * hiloOperacion(void *ptr);
 
 int main(int argc, char * argv[]) {
 	if (argc != 4 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0 ) {
@@ -45,10 +44,11 @@ int main(int argc, char * argv[]) {
 
 	pthread_attr_init(&attr);
 	pthread_mutex_init(&MTX, NULL);
+	pthread_barrier_init(&BAR, NULL, NUM_THREADS);
 
 	printf("Inicializando para operación con matrices de %ix%i ; block size de %i \n", N, N, BS);
 
-	int    i, j, k; // para iteraciónes
+	int    i;
 
 	// alocaciones
 	A   = (double *) malloc(sizeof(double) * espaciosMatriz);
@@ -84,27 +84,12 @@ int main(int argc, char * argv[]) {
 
 	for (i = 0; i < NUM_THREADS; ++i) {
 		ids[i] = i;
-		pthread_create(&threads[i], NULL, hiloPromedios, &ids[i]);
+		pthread_create(&threads[i], NULL, hiloOperacion, &ids[i]);
 	}
 
 	for (i = 0; i < NUM_THREADS; ++i) {
 		pthread_join(threads[i], NULL);
 	}
-
-	PromA = TotalA / espaciosMatriz;
-	PromB = TotalB / espaciosMatriz;
-
-	// Aca quedara cacheado el escalar
-	escalar = (MaxA * MaxB - MinA * MinB) / (PromA * PromB);
-
-	for (i = 0; i < NUM_THREADS; ++i) {
-		// ids[i] ya esta seteado de arriba
-		pthread_create(&threads[i], NULL, hiloMultiplicar, &ids[i]);
-	}
-
-	for (i = 0; i < NUM_THREADS; ++i) {
-		pthread_join(threads[i], NULL);
-	}	
 
 	tickFin = dwalltime();
 
@@ -113,9 +98,12 @@ int main(int argc, char * argv[]) {
 	return 0;
 }
 
-void * hiloPromedios(void *ptr) {
+void * hiloOperacion(void *ptr) {
 	int id;
 	id = * ((int *) ptr);
+
+	// variables para operaciones
+	int i, j, k, iPos, jPos;
 
 	// La "responsabilidad" de cada hilo sera el espacio de memoria en el cual trabajara.
 	int responsabilidad = (espaciosMatriz / NUM_THREADS);
@@ -130,7 +118,7 @@ void * hiloPromedios(void *ptr) {
 
 	// sacar max, min y prom
 	// se toman todos los elementos por igual, asi que no importa seguir los ordenes
-	for (int i = start; i < end; ++i) {
+	for (i = start; i < end; ++i) {
 		TotalAlocal += A[i];
 		if (A[i] > MaxAlocal) MaxAlocal = A[i];
 		if (A[i] < MinAlocal) MinAlocal = A[i];
@@ -152,18 +140,30 @@ void * hiloPromedios(void *ptr) {
 	if (MinAlocal < MinA) MinA = MinAlocal;
 	if (MinBlocal < MinB) MinB = MinBlocal;
 	pthread_mutex_unlock(&MTX);
-}
 
-void * hiloMultiplicar(void *ptr) {
-	int id;
-	id = * ((int *) ptr);
+	// Este barrier para que no se calcule el promedio hasta que todos los hilos
+	// hayan hecho su parte.
+	pthread_barrier_wait(&BAR);
 
-	int i, j, k, iPos, jPos;
+	// solo el primer thread spawnedo
+	if (id == 0) {
+		PromA = TotalA / espaciosMatriz;
+		PromB = TotalB / espaciosMatriz;
 
-	int responsabilidad = (N / NUM_THREADS);
+		// Aca quedara cacheado el escalar
+		escalar = (MaxA * MaxB - MinA * MinB) / (PromA * PromB);
+	}
 
-	int start = id * responsabilidad;
-	int end = start + responsabilidad;
+	// Este barrier, en teoria, para evitar que se llegue a la parte de multiplicación
+	// de escalar antes de que lo de arriba este hecho.
+	// En practica me parece imposible que todos los demas hilos lleguen a ese punto sin
+	// que el escalar se complete, pero bueno, voy por teoria.
+	pthread_barrier_wait(&BAR);
+	
+	// para el caso de multiplicar matrices, la responsabilidad es de N sobre numthreads
+	responsabilidad = (N / NUM_THREADS);
+	start = id * responsabilidad;
+	end = start + responsabilidad;
 
 	// Paso 1: Multiplicar A * B, guardar en R.
 	for (i = start; i < end; i += BS)
@@ -179,8 +179,9 @@ void * hiloMultiplicar(void *ptr) {
 		}
 	}
 
+	// como la multiplicacion al escalar lo hacemos con R en linea estilo vector,
+	// dividimos la responsabilidad distinto.
 	int responsabilidadREscalar = (espaciosMatriz / NUM_THREADS);
-	
 	int startME = id * responsabilidad;
 	int endME = start + responsabilidad;
 

@@ -138,9 +138,5 @@ int main(int argc, char * argv[]) {
 
 	printf("Finaliza operación. Tiempo: %.5lf \n", tickFin - tickComienzo);
 
-	/*for (i = 4000; i < espaciosMatriz; ++i) {
-		printf("%i: %lf\n", i, R[i]);
-	}*/
-
 	return 0;
 }

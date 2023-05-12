@@ -5,7 +5,7 @@
 
 #include "funcs_base.h"
 
-int N, BS, NUM_THREADS, espaciosMatriz, escalar;
+int N, BS, NUM_THREADS, espaciosMatriz;
 
 double *A, *B, *C, *R, *CD, *DP2;
 int    *D;
@@ -15,6 +15,8 @@ double MaxA = DBL_MIN, MaxB = DBL_MIN;
 double MinA = DBL_MIN, MinB = DBL_MAX;
 
 double TotalA = 0.0, TotalB = 0.0;
+
+double escalar;
 
 pthread_mutex_t MTX;
 

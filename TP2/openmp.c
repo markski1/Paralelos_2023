@@ -68,66 +68,79 @@ int main(int argc, char * argv[]) {
 
 	tickComienzo = dwalltime();
 
-	// sacar max, min y prom
-	// se toman todos los elementos por igual, asi que no importa seguir los ordenes
-	#pragma omp parallel for shared(A, B, TotalA, TotalB, MinA, MinB) private(i)
-	for (i = 0; i < espaciosMatriz; ++i) {
-		TotalA += A[i];
-		if (A[i] > MaxA) MaxA = A[i];
-		if (A[i] < MinA) MinA = A[i];
-
-		TotalB += B[i];
-		if (B[i] > MaxB) MaxB = B[i];
-		if (B[i] < MinB) MinB = B[i];
-	}
-
-	PromA = TotalA / espaciosMatriz;
-	PromB = TotalB / espaciosMatriz;
-
-	// Aca quedara cacheado el escalar
-	escalar = (MaxA * MaxB - MinA * MinB) / (PromA * PromB);
-
-	// COMIENZA MULTIPLICACIÓN
-
-	// Paso 1: Multiplicar A * B, guardar en R.
-	#pragma omp parallel for default(none) shared(A, B, R, N, BS) private(i, j, k, iPos, jPos)
-	for (i = 0; i < N; i += BS)
+	#pragma omp parallel
 	{
-		iPos = i * N;
-		for (j = 0; j < N; j += BS)
+		// sacar max, min y prom
+		// se toman todos los elementos por igual, asi que no importa seguir los ordenes
+		#pragma omp for private(i) reduction(+: TotalA, TotalB)
+		for (i = 0; i < espaciosMatriz; ++i) {
+			TotalA += A[i];
+			if (A[i] > MaxA) MaxA = A[i];
+			if (A[i] < MinA) MinA = A[i];
+
+			TotalB += B[i];
+			if (B[i] > MaxB) MaxB = B[i];
+			if (B[i] < MinB) MinB = B[i];
+		}
+	
+		#pragma omp single
 		{
-			jPos = j * N;
-			for (k = 0; k < N; k += BS)
+			PromA = TotalA / espaciosMatriz;
+			PromB = TotalB / espaciosMatriz;
+
+			// Aca quedara cacheado el escalar
+			escalar = (MaxA * MaxB - MinA * MinB) / (PromA * PromB);
+		}
+
+		// COMIENZA MULTIPLICACIÓN
+
+		// Paso 1: Multiplicar A * B, guardar en R.
+		#pragma omp for private(i, j, k, iPos, jPos) nowait
+		for (i = 0; i < N; i += BS)
+		{
+			iPos = i * N;
+			for (j = 0; j < N; j += BS)
 			{
-				blkmm_parte1(&A[iPos + k], &B[jPos + k], &R[iPos + j], N, BS);
+				jPos = j * N;
+				for (k = 0; k < N; k += BS)
+				{
+					blkmm_parte1(&A[iPos + k], &B[jPos + k], &R[iPos + j], N, BS);
+				}
 			}
 		}
-	}
+		// arriba se especifica nowait, ya que la multiplicación del escalar se hara sobre la región de R indicada.
 
-	// Paso 2: Multiplica R por el escalar.
-	#pragma omp parallel for default(none) shared(R, escalar, espaciosMatriz) private(i)
-	for (i = 0; i < espaciosMatriz; ++i) {
-		R[i] = R[i] * escalar;
-	}
+		// Paso 2: Multiplica R por el escalar.
+		#pragma omp for private(i) schedule(static, BS) nowait
+		for (i = 0; i < espaciosMatriz; ++i) {
+			R[i] = R[i] * escalar;
+		}
+		// arriba se especifica nowait, ya que la multiplicación se hara, de nuevo, sobre los espacios de R ya manejados
 
-	// Paso 3: Multiplicar C * Pot2(D); sumar a R
-	#pragma omp parallel for default(none) shared(C, D, R, DP2, N, BS) private(i, j, k, iPos, jPos)
-	for (i = 0; i < N; i += BS)
-	{
-		iPos = i * N;
-		for (j = 0; j < N; j += BS)
+		// Paso 3: Multiplicar C * Pot2(D); sumar a R
+		#pragma omp for private(i, j, k, iPos, jPos) 
+		for (i = 0; i < N; i += BS)
 		{
-			jPos = j * N;
-			for (k = 0; k < N; k += BS)
+			iPos = i * N;
+			for (j = 0; j < N; j += BS)
 			{
-				blkmm_parte2(&C[iPos + k], &D[jPos + k], &R[iPos + j], DP2, N, BS);
+				jPos = j * N;
+				for (k = 0; k < N; k += BS)
+				{
+					blkmm_parte2(&C[iPos + k], &D[jPos + k], &R[iPos + j], DP2, N, BS);
+				}
 			}
 		}
+		// aca si se espera, ya que es el fin de la operación.
 	}
 	
 	tickFin = dwalltime();
 
 	printf("Finaliza operación. Tiempo: %.5lf \n", tickFin - tickComienzo);
+
+	/*for (i = 4000; i < espaciosMatriz; ++i) {
+		printf("%i: %lf\n", i, R[i]);
+	}*/
 
 	return 0;
 }

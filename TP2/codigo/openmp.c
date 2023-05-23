@@ -52,12 +52,13 @@ int main(int argc, char * argv[]) {
 	C   = (double *) malloc(sizeof(double) * espaciosMatriz);
 	R   = (double *) malloc(sizeof(double) * espaciosMatriz);
 	D   = (int *)    malloc(sizeof(int)    * espaciosMatriz);
-	DP2 = (double *) malloc(sizeof(double) *       41      ); // cache d^2 ; + 1 espacio para evitar overflow
+	DP2 = (double *) malloc(sizeof(double) * espaciosMatriz); // cache d^2 ; + 1 espacio para evitar overflow
 
 	// asignaciones
 
 	for (i = 0; i < espaciosMatriz; ++i) {
 		D[i] = (rand() % 40) + 1; // valores al azar, entre 1 y 40
+		DP2[i] = D[i] * D[i];
 
 		A[i] = B[i] = C[i] = 1.0;
 		R[i] = 0.0;
@@ -117,7 +118,7 @@ int main(int argc, char * argv[]) {
 				jPos = j * N;
 				for (k = 0; k < N; k += BS)
 				{
-					blkmm_parte1(&A[iPos + k], &B[jPos + k], &R[iPos + j], N, BS);
+					blkmm(&A[iPos + k], &B[jPos + k], &R[iPos + j], N, BS);
 				}
 			}
 		}
@@ -141,7 +142,7 @@ int main(int argc, char * argv[]) {
 				jPos = j * N;
 				for (k = 0; k < N; k += BS)
 				{
-					blkmm_parte2(&C[iPos + k], &D[jPos + k], &R[iPos + j], DP2, N, BS);
+					blkmm(&C[iPos + k], &DP2[jPos + k], &R[iPos + j], N, BS);
 				}
 			}
 		}
@@ -150,7 +151,7 @@ int main(int argc, char * argv[]) {
 	
 	tickFin = dwalltime();
 
-	printf("\n==============\nFinaliza operación. Tiempo: %.5lf \n===========\nGenerando y comparando con cache secuencial...\n", tickFin - tickComienzo);
+	printf("\n==============\nFinaliza operación. Tiempo: %.5lf \n===========\nGenerando y comparando con versión secuencial...\n", tickFin - tickComienzo);
 
 	if (comparar == false) {
 		printf("==============\nPor pedido del usuario, se salta la comprobación.\n");
@@ -162,7 +163,7 @@ int main(int argc, char * argv[]) {
 	
 	double *R2 = (double *) malloc(sizeof(double) * espaciosMatriz);
 
-	SecuencialEnRDada(N, BS, A, B, C, D, R2);
+	SecuencialEnRDada(N, BS, A, B, C, DP2, R2);
 
 	bool error = false;
 

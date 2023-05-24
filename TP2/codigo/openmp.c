@@ -84,7 +84,7 @@ int main(int argc, char * argv[]) {
 	{
 		// sacar max, min y prom
 		// se toman todos los elementos por igual, asi que no importa seguir los ordenes
-		#pragma omp for private(i) reduction(+: TotalA, TotalB)
+		#pragma omp for private(i) reduction(+: TotalA, TotalB) reduction(min: MinA, MinB) reduction(max: MaxA, MaxB)
 		for (i = 0; i < espaciosMatriz; ++i) {
 			TotalA += A[i];
 			if (A[i] > MaxA) MaxA = A[i];
@@ -109,7 +109,7 @@ int main(int argc, char * argv[]) {
 		// COMIENZA MULTIPLICACIÓN
 
 		// Paso 1: Multiplicar A * B, guardar en R.
-		#pragma omp for private(i, j, k, iPos, jPos) nowait
+		#pragma omp for private(i, j, k, iPos, jPos) schedule(static, BS)
 		for (i = 0; i < N; i += BS)
 		{
 			iPos = i * N;
@@ -133,7 +133,7 @@ int main(int argc, char * argv[]) {
 		// pero se ve que OpenMP no distrubye a i de la misma forma abajo.
 
 		// Paso 3: Multiplicar C * Pot2(D); sumar a R
-		#pragma omp for private(i, j, k, iPos, jPos) 
+		#pragma omp for private(i, j, k, iPos, jPos) schedule(static, BS)
 		for (i = 0; i < N; i += BS)
 		{
 			iPos = i * N;

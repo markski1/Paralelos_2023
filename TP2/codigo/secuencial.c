@@ -19,7 +19,7 @@ int main(int argc, char * argv[]) {
 		return 1;
 	}
 
-	printf("Inicializando para operación con matrices de %ix%i ; block size de %i \n", N, N, BS);
+	printf(COLOR_MAGENTA "Inicializando para:"COLOR_RESET" N=%i ; BS=%i\n", N, BS);
 
 	// declararaciones
 	double *A, *B, *C, *R, *CD, *DP2;
@@ -54,7 +54,7 @@ int main(int argc, char * argv[]) {
 
 	int iPos, jPos;
 
-	printf("Listo.\nComienza operación...\n");
+	printf("Listo.\n" COLOR_MAGENTA "Comienza operación..." COLOR_RESET);
 
 	// COMIENZA OPERACIONES MEDIDAS
 
@@ -116,7 +116,7 @@ int main(int argc, char * argv[]) {
 
 	tickFin = dwalltime();
 
-	printf("\n==============\nFinaliza operación. Tiempo: %.5lf \n", tickFin - tickComienzo);
+	printf("\n==============\n"COLOR_MAGENTA"Finaliza operación."COLOR_RESET" Tiempo: %.5lf\n", tickFin - tickComienzo);
 
 	return 0;
 }

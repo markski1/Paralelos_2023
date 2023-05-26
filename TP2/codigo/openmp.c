@@ -32,7 +32,7 @@ int main(int argc, char * argv[]) {
 		return 1;
 	}
 
-	printf("Inicializando para operación con matrices de %ix%i ; block size de %i \n", N, N, BS);
+	printf(COLOR_MAGENTA "Inicializando para:"COLOR_RESET" N=%i ; BS=%i\n", N, BS);
 
 	// declararaciones
 	double *A, *B, *C, *R, *CD, *DP2;
@@ -74,7 +74,7 @@ int main(int argc, char * argv[]) {
 
 	int iPos, jPos;
 
-	printf("Listo.\nComienza operación...\n");
+	printf("Listo.\n" COLOR_MAGENTA "Comienza operación..." COLOR_RESET);
 
 	// COMIENZA OPERACIONES MEDIDAS
 
@@ -109,7 +109,7 @@ int main(int argc, char * argv[]) {
 		// COMIENZA MULTIPLICACIÓN
 
 		// Paso 1: Multiplicar A * B, guardar en R.
-		#pragma omp for private(i, j, k, iPos, jPos) schedule(static, BS)
+		#pragma omp for private(i, j, k, iPos, jPos) schedule(static) nowait
 		for (i = 0; i < N; i += BS)
 		{
 			iPos = i * N;
@@ -125,7 +125,7 @@ int main(int argc, char * argv[]) {
 		// arriba se especifica nowait, ya que la multiplicación del escalar se hara sobre la región de R indicada.
 
 		// Paso 2: Multiplica R por el escalar.
-		#pragma omp for private(i) schedule(static, BS)
+		#pragma omp for private(i) schedule(static) nowait
 		for (i = 0; i < espaciosMatriz; ++i) {
 			R[i] = R[i] * escalar;
 		}
@@ -133,7 +133,7 @@ int main(int argc, char * argv[]) {
 		// pero se ve que OpenMP no distrubye a i de la misma forma abajo.
 
 		// Paso 3: Multiplicar C * Pot2(D); sumar a R
-		#pragma omp for private(i, j, k, iPos, jPos) schedule(static, BS)
+		#pragma omp for private(i, j, k, iPos, jPos) schedule(static)
 		for (i = 0; i < N; i += BS)
 		{
 			iPos = i * N;
@@ -151,7 +151,7 @@ int main(int argc, char * argv[]) {
 	
 	tickFin = dwalltime();
 
-	printf("\n==============\nFinaliza operación. Tiempo: %.5lf \n===========\nGenerando y comparando con versión secuencial...\n", tickFin - tickComienzo);
+	printf("\n==============\n"COLOR_MAGENTA"Finaliza operación."COLOR_RESET" Tiempo: %.5lf \n===========\nGenerando y comparando con versión secuencial...\n", tickFin - tickComienzo);
 
 	if (comparar == false) {
 		printf("==============\nPor pedido del usuario, se salta la comprobación.\n");
@@ -169,17 +169,17 @@ int main(int argc, char * argv[]) {
 
 	for (i = 0; i < espaciosMatriz; ++i) {
 		if (R[i] != R2[i]) {
-			printf("ERROR EN POSICION %i: R original: %lf ; R secuencial: %lf \n", i, R[i], R2[i]);
+			printf("==============\nERROR EN POSICION %i: R openmp: %lf ; R secuencial: %lf \n", i, R[i], R2[i]);
 			error = true;
 			break;
 		}
 	}
 
 	if (!error) {
-		printf("==============\nExito, los valores son iguales a los del secuencial.\n");
+		printf("==============\n" COLOR_VERDE "Exito, los valores son iguales a los del secuencial.\n" COLOR_RESET);
 	}
 	else {
-		printf("==============\nError, los valores no son iguales a los del secuencial.\n");
+		printf("==============\n" COLOR_ROJO "Error, los valores no son iguales a los del secuencial.\n" COLOR_RESET);
 	}
 
 	return 0;

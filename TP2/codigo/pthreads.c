@@ -51,7 +51,7 @@ int main(int argc, char * argv[]) {
 	pthread_mutex_init(&MTX, NULL);
 	pthread_barrier_init(&BAR, NULL, NUM_THREADS);
 
-	printf("Inicializando para operación con matrices de %ix%i ; block size de %i \n", N, N, BS);
+	printf(COLOR_MAGENTA "Inicializando para:"COLOR_RESET" N=%i ; BS=%i\n", N, BS);
 
 	// alocaciones
 	A   = (double *) malloc(sizeof(double) * espaciosMatriz);
@@ -77,7 +77,7 @@ int main(int argc, char * argv[]) {
 
 	int ids[NUM_THREADS];
 
-	printf("Listo.\nComienza operación...\n");
+	printf("Listo.\n" COLOR_MAGENTA "Comienza operación..." COLOR_RESET);
 
 	// COMIENZA OPERACIONES MEDIDAS
 
@@ -94,8 +94,7 @@ int main(int argc, char * argv[]) {
 
 	tickFin = dwalltime();
 
-	printf("\n==============\nFinaliza operación. Tiempo: %.5lf \n===========\nGenerando y comparando con versión secuencial...\n", tickFin - tickComienzo);
-
+	printf("\n==============\n"COLOR_MAGENTA"Finaliza operación."COLOR_RESET" Tiempo: %.5lf \n===========\nGenerando y comparando con versión secuencial...\n", tickFin - tickComienzo);
 
 	if (comparar == false) {
 		printf("==============\nPor pedido del usuario, se salta la comprobación.\n");
@@ -114,17 +113,17 @@ int main(int argc, char * argv[]) {
 
 	for (i = 0; i < espaciosMatriz; ++i) {
 		if (R[i] != R2[i]) {
-			printf("ERROR EN POSICION %i: R original: %lf ; R secuencial: %lf \n", i, R[i], R2[i]);
+			printf("==============\nERROR EN POSICION %i: R pthread: %lf ; R secuencial: %lf \n", i, R[i], R2[i]);
 			error = true;
 			break;
 		}
 	}
 
 	if (!error) {
-		printf("==============\nExito, los valores son iguales a los del secuencial.\n");
+		printf("==============\n" COLOR_VERDE "Exito, los valores son iguales a los del secuencial.\n" COLOR_RESET);
 	}
 	else {
-		printf("==============\nError, los valores no son iguales a los del secuencial.\n");
+		printf("==============\n" COLOR_ROJO "Error, los valores no son iguales a los del secuencial.\n" COLOR_RESET);
 	}
 
 	return 0;

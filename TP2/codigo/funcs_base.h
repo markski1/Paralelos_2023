@@ -1,5 +1,12 @@
 #include <sys/time.h>
 
+// Colores ANSI
+#define COLOR_VERDE   "\x1b[32m"
+#define COLOR_ROJO    "\x1b[31m"
+#define COLOR_MAGENTA "\x1b[35m"
+#define COLOR_RESET   "\x1b[0m"
+
+
 /**********Para calcular tiempo*************************************/
 double dwalltime()
 {

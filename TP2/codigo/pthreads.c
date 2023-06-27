@@ -51,7 +51,7 @@ int main(int argc, char * argv[]) {
 	pthread_mutex_init(&MTX, NULL);
 	pthread_barrier_init(&BAR, NULL, NUM_THREADS);
 
-	printf(COLOR_MAGENTA "Inicializando para:"COLOR_RESET" N=%i ; BS=%i\n", N, BS);
+	printf(COLOR_BLUE "Inicializando para:"COLOR_RESET" N=%i ; BS=%i\n", N, BS);
 
 	// alocaciones
 	A   = (double *) malloc(sizeof(double) * espaciosMatriz);
@@ -77,7 +77,7 @@ int main(int argc, char * argv[]) {
 
 	int ids[NUM_THREADS];
 
-	printf("Listo.\n" COLOR_MAGENTA "Comienza operación..." COLOR_RESET);
+	printf("Listo.\n" COLOR_BLUE "Comienza operación..." COLOR_RESET);
 
 	// COMIENZA OPERACIONES MEDIDAS
 
@@ -94,7 +94,7 @@ int main(int argc, char * argv[]) {
 
 	tickFin = dwalltime();
 
-	printf("\n==============\n"COLOR_MAGENTA"Finaliza operación."COLOR_RESET" Tiempo: %.5lf \n===========\nGenerando y comparando con versión secuencial...\n", tickFin - tickComienzo);
+	printf("\n==============\n"COLOR_BLUE"Finaliza operación."COLOR_RESET" Tiempo: %.5lf \n===========\nGenerando y comparando con versión secuencial...\n", tickFin - tickComienzo);
 
 	if (comparar == false) {
 		printf("==============\nPor pedido del usuario, se salta la comprobación.\n");

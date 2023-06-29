@@ -2,16 +2,13 @@
 #include <stdlib.h>
 #include <float.h>
 #include <stdbool.h>
+#include <omp.h>
 #include <mpi.h>
 
 #include "funcs_base.h"
 
 // rank del master
 #define MASTER       0
-
-// defines para posiciones de matriz en min/max/prom
-#define MPOS_A       0
-#define MPOS_B       1
 
 // cuantas veces se toman tiempos de runtime y commtime
 #define TIME_COUNT   6
@@ -27,32 +24,38 @@
 
 #define MASTER_PRINT(...) if (rank == MASTER) printf(__VA_ARGS__);
 
-int main(int argc, char * argv[])
-{
+int main(int argc, char * argv[]) {
 	// Setup MPI
-	int procs, rank;
+	int procs, rank, provided;
 
-	MPI_Init(&argc, &argv);
+	MPI_Init_thread(&argc, &argv, MPI_THREAD_MULTIPLE, &provided);
 
 	MPI_Comm_size(MPI_COMM_WORLD, &procs);
 	MPI_Comm_rank(MPI_COMM_WORLD, &rank);
 
-	if (argc > 4 || argc < 2 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0)
-	{
-		MASTER_PRINT("Proveer N y blocksize en args. Opcionalmente un '1' para skippear verificacion.\n");
+	// validar entrada
+
+	if (argc > 5 || argc < 3 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0) {
+		MASTER_PRINT("Proveer N, blocksize (opcionalmente NUM_THREADS y un '1' para skippear comparación) en args.\n");
 		return 1;
 	}
 
 	int N = atoi(argv[1]);
 	int BS = atoi(argv[2]);
-	int espaciosMatriz = N * N;
 
 	bool comparar = true;
 
-	if (argc == 4 && atoi(argv[4]) == 1) comparar = false;
+	// Si se especifica un 3er parametro, se usa como numero de threads.
+	// Caso contrario se asume lo que diga el sistema (por ejemplo el script sbatch)
+	if (argc >= 4) {
+		omp_set_num_threads(atoi(argv[3]));
+		// Si se especificara un '1' extra, no se compara con sec.
+		if (argc == 5 && atoi(argv[4]) == 1) comparar = false;
+	}
 
-	if (N % BS != 0)
-	{
+	int espaciosMatriz = N * N;
+
+	if (N % BS != 0) {
 		MASTER_PRINT("N debe ser multiplo de bs.\n");
 		return 1;
 	}
@@ -63,15 +66,14 @@ int main(int argc, char * argv[])
 	double *A, *B, *C, *R, *CD, *DP2;
 	int    *D, *DT2;
 
-	// para el escalar
 	double PromA, PromB;
 	double MaxA = DBL_MIN, MaxB = DBL_MIN;
 	double MinA = DBL_MIN, MinB = DBL_MAX;
 
+	double TotalA = 0.0, TotalB = 0.0; // para sacar promedio
+
 	// para hacer reduccion de mpi
 	double maxALocal, minALocal, totalALocal;
-
-	double TotalA = 0.0, TotalB = 0.0; // para sacar promedio
 
 	int    i, j, k; // para iteraciónes
 
@@ -82,6 +84,8 @@ int main(int argc, char * argv[])
 
 	int totalDouble = sizeof(double) * espaciosMatriz;
 	int divDouble = sizeof(double) * responsabilidadPlana;
+
+	// alocaciones
 
 	if (rank == MASTER)
 	{
@@ -95,13 +99,13 @@ int main(int argc, char * argv[])
 		C   = (double *) malloc(divDouble);
 		R   = (double *) malloc(divDouble);
 	}
-
-	// alocaciones
 	
 	B   = (double *) malloc(totalDouble);
 	D   = (int *)    malloc(sizeof(int) * espaciosMatriz);
 	DT2 = (int *)    malloc(sizeof(int) * 41); // cache con los posibles valores de D²
 	DP2 = (double *) malloc(totalDouble); // cache d^2 en double para usar.
+
+	// asignaciones
 
 	// asignaciones
 	if (rank == MASTER)
@@ -122,6 +126,7 @@ int main(int argc, char * argv[])
 		}
 	}
 
+	// cachear valores entre 0 y 40 de ^2
 	for (int i = 0; i < 41; i++)
 	{
 		DT2[i] = i * i;
@@ -137,9 +142,9 @@ int main(int argc, char * argv[])
 	// SYNC E INICIO
 	MPI_Barrier(MPI_COMM_WORLD);
 
-
 	// se comienza a tomar tiempo
 	Wtimes[TIME_START] = MPI_Wtime();
+
 
 	// DISTRIBUIR DATOS
 
@@ -184,115 +189,130 @@ int main(int argc, char * argv[])
 	// se marca tiempo de comunicación 1
 	Wtimes[COMMTIME_1] = MPI_Wtime();
 
-
 	// COMIENZA EJECUCIÓN
 
-	// Cachear DP2
-
-	for (i = 0; i < espaciosMatriz; i++)
+	#pragma omp parallel
 	{
-		DP2[i] = DT2[D[i]]; // donde DT2 era el cache de resultados indexado por i
-	}
-
-	// sacar max, min y prom
-	// se toman todos los elementos por igual, asi que no importa seguir los ordenes
-
-	// B se pasa entero, asi que cada cual lo hace localmente.
-	for (i = 0; i < espaciosMatriz; ++i)
-	{
-		TotalB += B[i];
-		if (B[i] > MaxB) MaxB = B[i];
-		if (B[i] < MinB) MinB = B[i];
-	}
-
-	// A se pasa en chunks, asi que cada cual hace su responsabilidad plana
-	for (i = 0; i < responsabilidadPlana; ++i)
-	{
-		TotalA += A[i];
-		if (A[i] > MaxA) MaxA = A[i];
-		if (A[i] < MinA) MinA = A[i];
-	}
-
-	minALocal = MinA;
-	maxALocal = MaxA;
-	totalALocal = TotalA;
-
-	// se marca tiempo de ejecución 1
-	Wtimes[RUNTIME_1] = MPI_Wtime();
-
-	// REDUCIR PROMEDIOS MAXIMOS Y MINIMOS
-
-	MPI_Allreduce(
-		&minALocal,      // buffer que envia cada nodo
-		&MinA,           // buffer que recibe
-		1,               // # de elementos
-		MPI_DOUBLE,      // tipo
-		MPI_MIN,         // operacion
-		MPI_COMM_WORLD);
-
-	MPI_Allreduce(
-		&maxALocal,
-		&MaxA,
-		1,
-		MPI_DOUBLE,
-		MPI_MAX,
-		MPI_COMM_WORLD);
-
-	MPI_Allreduce(
-		&totalALocal,
-		&TotalA,
-		1,
-		MPI_DOUBLE,
-		MPI_SUM,
-		MPI_COMM_WORLD);
-
-	// se marca tiempo de comunicación 2
-	Wtimes[COMMTIME_2] = MPI_Wtime();
-
-	// CONTINUA EJECUCIÓN
-
-	PromA = TotalA / espaciosMatriz;
-	PromB = TotalB / espaciosMatriz;
-
-	// Aca quedara cacheado el escalar
-	escalar = (MaxA * MaxB - MinA * MinB) / (PromA * PromB);
-
-	// COMIENZA MULTIPLICACIÓN
-
-	// Paso 1: Multiplicar A * B, guardar en R.
-	for (i = 0; i < responsabilidad; i += BS)
-	{
-		iPos = i * N;
-		for (j = 0; j < N; j += BS)
+		// Cachear DP2
+		// fue mediblemente mas rapido hacer eso en cada proc que hacer broadcast
+		#pragma omp for private(i) schedule(static) nowait
+		for (i = 0; i < espaciosMatriz; i++)
 		{
-			jPos = j * N;
-			for (k = 0; k < N; k += BS)
+			DP2[i] = DT2[D[i]]; // donde DT2 era el cache de resultados indexado por i
+		}
+
+		// sacar max, min y prom
+		// se toman todos los elementos por igual, asi que no importa seguir los ordenes
+		#pragma omp for private(i) reduction(+: TotalB) reduction(min: MinB) reduction(max: MaxB) nowait
+		for (i = 0; i < espaciosMatriz; ++i)
+		{
+			TotalB += B[i];
+			if (B[i] > MaxB) MaxB = B[i];
+			if (B[i] < MinB) MinB = B[i];
+		}
+		// sin barrera implicita, nowait ya que lo que sigue no depende de B.
+
+		#pragma omp for private(i) reduction(+: TotalA) reduction(min: MinA) reduction(max: MaxA)
+		for (i = 0; i < responsabilidadPlana; ++i)
+		{
+			TotalA += B[i];
+			if (B[i] > MaxA) MaxA = B[i];
+			if (B[i] < MinA) MinA = B[i];
+		}
+		// aca si hay barrera implicita.
+	
+		#pragma omp single
+		{
+			// Igual que en el MPI, B ya esta calculado, porque cada proceso tiene su copia entera.
+			// En el caso de A, hay que hacer un Allreduce.
+
+			minALocal = MinA;
+			maxALocal = MaxA;
+			totalALocal = TotalA;
+
+			// se marca tiempo de ejecución 1
+			Wtimes[RUNTIME_1] = MPI_Wtime();
+
+			// REDUCIR PROMEDIOS MAXIMOS Y MINIMOS
+
+			MPI_Allreduce(
+				&minALocal,      // buffer que envia cada nodo
+				&MinA,           // buffer que recibe
+				1,               // # de elementos
+				MPI_DOUBLE,      // tipo
+				MPI_MIN,         // operacion
+				MPI_COMM_WORLD);
+
+			MPI_Allreduce(
+				&maxALocal,
+				&MaxA,
+				1,
+				MPI_DOUBLE,
+				MPI_MAX,
+				MPI_COMM_WORLD);
+
+			MPI_Allreduce(
+				&totalALocal,
+				&TotalA,
+				1,
+				MPI_DOUBLE,
+				MPI_SUM,
+				MPI_COMM_WORLD);
+
+			// se marca tiempo de comunicación 2
+			Wtimes[COMMTIME_2] = MPI_Wtime();
+
+			PromA = TotalA / espaciosMatriz;
+			PromB = TotalB / espaciosMatriz;
+
+			// Aca quedara cacheado el escalar
+			escalar = (MaxA * MaxB - MinA * MinB) / (PromA * PromB);
+		}
+		// barrera implicita
+
+		// COMIENZA MULTIPLICACIÓN
+
+		// Paso 1: Multiplicar A * B, guardar en R.
+		#pragma omp for private(i, j, k, iPos, jPos) schedule(static) nowait
+		for (i = 0; i < responsabilidad; i += BS)
+		{
+			iPos = i * N;
+			for (j = 0; j < N; j += BS)
 			{
-				blkmm(&A[iPos + k], &B[jPos + k], &R[iPos + j], N, BS);
+				jPos = j * N;
+				for (k = 0; k < N; k += BS)
+				{
+					blkmm(&A[iPos + k], &B[jPos + k], &R[iPos + j], N, BS);
+				}
 			}
 		}
-	}
+		// arriba se especifica nowait, ya que la multiplicación del escalar se hara sobre la región de R indicada.
 
-	// Paso 2: Multiplica R por el escalar.
-	for (i = 0; i < responsabilidadPlana; ++i)
-	{
-		R[i] = R[i] * escalar;
-	}
-
-	// Paso 3: Multiplicar C * Pot2(D); sumar a R
-	for (i = 0; i < responsabilidad; i += BS)
-	{
-		iPos = i * N;
-		for (j = 0; j < N; j += BS)
+		// Paso 2: Multiplica R por el escalar.
+		#pragma omp for private(i) schedule(static) nowait
+		for (i = 0; i < responsabilidadPlana; ++i)
 		{
-			jPos = j * N;
-			for (k = 0; k < N; k += BS)
+			R[i] = R[i] * escalar;
+		}
+		// arriba se especifica nowait, ya que lo que se computa abajo se distribuye tambien estaticamente.
+
+		// Paso 3: Multiplicar C * Pot2(D); sumar a R
+		#pragma omp for private(i, j, k, iPos, jPos) schedule(static)
+		for (i = 0; i < responsabilidad; i += BS)
+		{
+			iPos = i * N;
+			for (j = 0; j < N; j += BS)
 			{
-				blkmm(&C[iPos + k], &DP2[jPos + k], &R[iPos + j], N, BS);
+				jPos = j * N;
+				for (k = 0; k < N; k += BS)
+				{
+					blkmm(&C[iPos + k], &DP2[jPos + k], &R[iPos + j], N, BS);
+				}
 			}
 		}
+		// aca si se espera, ya que es el fin de la operación.
 	}
-
+	
 	// se marca tiempo de ejecución 2
 	Wtimes[RUNTIME_2] = MPI_Wtime();
 
@@ -334,7 +354,8 @@ int main(int argc, char * argv[])
 
 	// ya no hace falta nada mas que master
 	MPI_Finalize();
-	
+
+
 	if (rank == MASTER)
 	{
 		double total = Wtimes[TIME_END] - Wtimes[TIME_START];
@@ -350,16 +371,16 @@ int main(int argc, char * argv[])
 		// tercera comm (gather en R)
 		comm += maxWtimes[TIME_END] - minWtimes[RUNTIME_2];
 
-		printf(
-			"\n==========\n"COLOR_BLUE"Finaliza operación."COLOR_RESET"\n| Tiempo total : %.5lf\n| Comunicacion : %.5lf\n| Ejecución    : %.5lf\n", total, comm, total - comm);
+		printf("\n==========\n"COLOR_BLUE"Finaliza operación."COLOR_RESET"\n| Tiempo total : %.5lf\n| Comunicacion : %.5lf\n| Ejecución    : %.5lf\n", total, comm, total - comm);
 
-		if (comparar == false) {
+		if (comparar == false)
+		{
 			printf("==========\nPor pedido del usuario, se salta la comprobación.\n");
 			return 0;
 		}
 		else
 		{
-			printf("==========\nComparando con version secuencial no-MPI.\n");
+			printf("==========\nComparando con version secuencial.\n");
 		}
 
 		// y generar un R en R2 con el secuencial
@@ -371,19 +392,23 @@ int main(int argc, char * argv[])
 
 		bool error = false;
 
-		for (i = 0; i < espaciosMatriz; ++i) {
-			if (R[i] != R2[i]) {
-				printf("==========\nERROR EN POSICION %i: R sec mpi: %lf ; R secuencial: %lf \n", i, R[i], R2[i]);
+		for (i = 0; i < espaciosMatriz; ++i)
+		{
+			if (R[i] != R2[i])
+			{
+				printf("==========\nERROR EN POSICION %i: R mpi: %lf ; R secuencial: %lf \n", i, R[i], R2[i]);
 				error = true;
 				break;
 			}
 		}
 
-		if (!error) {
-			printf("==========\n" COLOR_VERDE "Exito, los valores son iguales a los del secuencial no distribuido.\n" COLOR_RESET);
+		if (!error)
+		{
+			printf("==========\n" COLOR_VERDE "Exito, los valores son iguales a los del secuencial.\n" COLOR_RESET);
 		}
-		else {
-			printf("==========\n" COLOR_ROJO "Error, los valores no son iguales a los del secuencial no distribuido.\n" COLOR_RESET);
+		else
+		{
+			printf("==========\n" COLOR_ROJO "Error, los valores no son iguales a los del secuencial.\n" COLOR_RESET);
 		}
 
 		return 0;

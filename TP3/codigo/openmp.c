@@ -1,8 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <float.h>
-#include <omp.h>
 #include <stdbool.h>
+#include <omp.h>
 
 #include "funcs_base.h"
 
@@ -150,10 +150,10 @@ int main(int argc, char * argv[]) {
 	
 	tickFin = dwalltime();
 
-	printf("\n==============\n"COLOR_BLUE"Finaliza operación."COLOR_RESET" Tiempo: %.5lf \n===========\nGenerando y comparando con versión secuencial...\n", tickFin - tickComienzo);
+	printf("\n==========\n"COLOR_BLUE"Finaliza operación."COLOR_RESET" Tiempo: %.5lf \n==========\nGenerando y comparando con versión secuencial...\n", tickFin - tickComienzo);
 
 	if (comparar == false) {
-		printf("==============\nPor pedido del usuario, se salta la comprobación.\n");
+		printf("==========\nPor pedido del usuario, se salta la comprobación.\n");
 		return 0;
 	}
 
@@ -168,17 +168,17 @@ int main(int argc, char * argv[]) {
 
 	for (i = 0; i < espaciosMatriz; ++i) {
 		if (R[i] != R2[i]) {
-			printf("==============\nERROR EN POSICION %i: R openmp: %lf ; R secuencial: %lf \n", i, R[i], R2[i]);
+			printf("==========\nERROR EN POSICION %i: R openmp: %lf ; R secuencial: %lf \n", i, R[i], R2[i]);
 			error = true;
 			break;
 		}
 	}
 
 	if (!error) {
-		printf("==============\n" COLOR_VERDE "Exito, los valores son iguales a los del secuencial.\n" COLOR_RESET);
+		printf("==========\n" COLOR_VERDE "Exito, los valores son iguales a los del secuencial.\n" COLOR_RESET);
 	}
 	else {
-		printf("==============\n" COLOR_ROJO "Error, los valores no son iguales a los del secuencial.\n" COLOR_RESET);
+		printf("==========\n" COLOR_ROJO "Error, los valores no son iguales a los del secuencial.\n" COLOR_RESET);
 	}
 
 	return 0;

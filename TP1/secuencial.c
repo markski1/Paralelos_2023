@@ -3,8 +3,7 @@
 #include <float.h>
 
 double dwalltime();
-void blkmm_parte1(double *A_blk, double *B_blk, double *R_blk, int n, int bs);
-void blkmm_parte2(double *C_blk, int *D_blk, double *R_blk, double *D_2, int n, int bs);
+void blkmm(double *A_blk, double *B_blk, double *R_blk, int n, int bs);
 
 int main(int argc, char * argv[]) {
 	if (argc != 3 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0 ) {
@@ -25,7 +24,7 @@ int main(int argc, char * argv[]) {
 
 	// declararaciones
 	double *A, *B, *C, *R, *CD, *DP2;
-	int    *D;
+	int    *D, *DT2;
 
 	double PromA, PromB;
 	double MaxA = DBL_MIN, MaxB = DBL_MIN;
@@ -41,7 +40,8 @@ int main(int argc, char * argv[]) {
 	C   = (double *) malloc(sizeof(double) * espaciosMatriz);
 	R   = (double *) malloc(sizeof(double) * espaciosMatriz);
 	D   = (int *)    malloc(sizeof(int)    * espaciosMatriz);
-	DP2 = (double *) malloc(sizeof(double) *        41      ); // cache d^2 ; + 1 espacio para evitar overflow
+	DT2 = (int *)    malloc(sizeof(int)    *      41       ); // cache con los posibles valores de D²
+	DP2 = (double *) malloc(sizeof(double) * espaciosMatriz); // cache d^2 ; + 1 espacio para evitar overflow
 
 	// asignaciones
 	for (i = 0; i < espaciosMatriz; ++i) {
@@ -51,21 +51,28 @@ int main(int argc, char * argv[]) {
 		R[i] = 0.0;
 	}
 
-	// Cachear un arreglo con pow2 D
-	// pueden ser de 1 a 40, y C es zero-indexed, asi que...
-	for (i = 0; i < 41; ++i) {
-		DP2[i] = (double) (i * i);
+	// cachear valores entre 0 y 40 de ^2
+	for (int i = 0; i < 41; i++)
+	{
+		DT2[i] = i * i;
 	}
 
 	double tickComienzo, tickFin, escalar;
 
 	int iPos, jPos;
 
-	printf("Listo.\nComienza operación...\n");
+	printf("Listo.\nComienza operación...");
 
 	// COMIENZA OPERACIONES MEDIDAS
 
 	tickComienzo = dwalltime();
+
+	// Cachear DP2
+
+	for (i = 0; i < espaciosMatriz; i++)
+	{
+		DP2[i] = DT2[D[i]]; // donde DT2 era el cache de resultados indexado por i
+	}
 
 	// sacar max, min y prom
 	// se toman todos los elementos por igual, asi que no importa seguir los ordenes
@@ -76,7 +83,7 @@ int main(int argc, char * argv[]) {
 
 		TotalB += B[i];
 		if (B[i] > MaxB) MaxB = B[i];
-		if (B[i] < MinB) MinA = B[i];
+		if (B[i] < MinB) MinB = B[i];
 	}
 
 	PromA = TotalA / espaciosMatriz;
@@ -96,7 +103,7 @@ int main(int argc, char * argv[]) {
 			jPos = j * N;
 			for (k = 0; k < N; k += BS)
 			{
-				blkmm_parte1(&A[iPos + k], &B[jPos + k], &R[iPos + j], N, BS);
+				blkmm(&A[iPos + k], &B[jPos + k], &R[iPos + j], N, BS);
 			}
 		}
 	}
@@ -115,11 +122,10 @@ int main(int argc, char * argv[]) {
 			jPos = j * N;
 			for (k = 0; k < N; k += BS)
 			{
-				blkmm_parte2(&C[iPos + k], &D[jPos + k], &R[iPos + j], DP2, N, BS);
+				blkmm(&C[iPos + k], &DP2[jPos + k], &R[iPos + j], N, BS);
 			}
 		}
 	}
-	
 
 	tickFin = dwalltime();
 
@@ -128,10 +134,8 @@ int main(int argc, char * argv[]) {
 	return 0;
 }
 
-// COMIENZA FUNCIONES PARA MULTIPLICACIÓN POR BLOQUE
-
 //                        A              B              R
-void blkmm_parte1(double *A_blk, double *B_blk, double *R_blk, int n, int bs)
+void blkmm(double *A_blk, double *B_blk, double *R_blk, int n, int bs)
 {
 	int i, j, k,
 	    iPos, jPos;
@@ -149,31 +153,7 @@ void blkmm_parte1(double *A_blk, double *B_blk, double *R_blk, int n, int bs)
 			{
 				registro += A_blk[iPos + k] * B_blk[jPos + k];
 			}
-			R_blk[iPos + j] = registro;
-		}
-	}
-}
-
-//                        C           D              CD             Cache Pot2(D)
-void blkmm_parte2(double *C_blk, int *D_blk, double *R_blk, double *D_2, int n, int bs)
-{
-	int i, j, k,
-	    iPos, jPos;
-
-	double registro;
-
-	for (i = 0; i < bs; i++)
-	{
-		iPos = i*n;
-		for (j = 0; j < bs; j++)
-		{
-			jPos = j*n;
-			registro = 0.0;
-			for (k = 0; k < bs; k++)
-			{
-				registro += C_blk[iPos + k] * D_2[ D_blk[jPos + k] ];
-			}
-			R_blk[iPos + j] += registro; // SUMA, no igual, porque ya tenemos R con Escalar * [A * B],
+			R_blk[iPos + j] += registro;
 		}
 	}
 }

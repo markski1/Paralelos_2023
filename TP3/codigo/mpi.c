@@ -16,8 +16,8 @@
 // y cambia de comm a time, esto hace mas facil leer que tiempo se esta tomando.
 #define TIME_START   0
 #define COMMTIME_1   1
-#define RUNTIME_1    2
-#define COMMTIME_2   3
+#define COMMTIME_2   2
+#define RUNTIME_1    3
 #define RUNTIME_2    4
 #define TIME_END     5
 
@@ -45,9 +45,9 @@ int main(int argc, char * argv[])
 	int BS = atoi(argv[2]);
 	int espaciosMatriz = N * N;
 
-	bool comparar = true;
+	bool comparar = false;
 
-	if (argc == 4 && atoi(argv[4]) == 1) comparar = false;
+	if (argc == 4 && atoi(argv[3]) == 1) comparar = true;
 
 	if (N % BS != 0)
 	{
@@ -354,7 +354,7 @@ int main(int argc, char * argv[])
 
 		if (comparar == false)
 		{
-			printf("==========\nPor pedido del usuario, se salta la comprobación.\n");
+			printf("==========\nNo se realizara comparación con versión secuencial. Agregar argumento '1' a lo ultimo para comparar.\n");
 			return 0;
 		}
 		else

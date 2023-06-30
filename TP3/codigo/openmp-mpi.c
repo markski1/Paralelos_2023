@@ -17,8 +17,8 @@
 // y cambia de comm a time, esto hace mas facil leer que tiempo se esta tomando.
 #define TIME_START   0
 #define COMMTIME_1   1
-#define RUNTIME_1    2
-#define COMMTIME_2   3
+#define COMMTIME_2   2
+#define RUNTIME_1    3
 #define RUNTIME_2    4
 #define TIME_END     5
 
@@ -36,21 +36,21 @@ int main(int argc, char * argv[]) {
 	// validar entrada
 
 	if (argc > 5 || argc < 3 || atoi(argv[1]) <= 0 || atoi(argv[2]) <= 0) {
-		MASTER_PRINT("Proveer N, blocksize (opcionalmente NUM_THREADS y un '1' para skippear comparación) en args.\n");
+		MASTER_PRINT("Proveer N, blocksize (opcionalmente NUM_THREADS y un '1' para hacer comparación) en args.\n");
 		return 1;
 	}
 
 	int N = atoi(argv[1]);
 	int BS = atoi(argv[2]);
 
-	bool comparar = true;
+	bool comparar = false;
 
 	// Si se especifica un 3er parametro, se usa como numero de threads.
 	// Caso contrario se asume lo que diga el sistema (por ejemplo el script sbatch)
 	if (argc >= 4) {
 		omp_set_num_threads(atoi(argv[3]));
-		// Si se especificara un '1' extra, no se compara con sec.
-		if (argc == 5 && atoi(argv[4]) == 1) comparar = false;
+		// Si se especificara un '1' extra, se compara con sec.
+		if (argc == 5 && atoi(argv[4]) == 1) comparar = true;
 	}
 
 	int espaciosMatriz = N * N;
@@ -375,7 +375,7 @@ int main(int argc, char * argv[]) {
 
 		if (comparar == false)
 		{
-			printf("==========\nPor pedido del usuario, se salta la comprobación.\n");
+			printf("==========\nNo se realizara comparación con versión secuencial. Agregar argumento '1' a lo ultimo para comparar.\n");
 			return 0;
 		}
 		else

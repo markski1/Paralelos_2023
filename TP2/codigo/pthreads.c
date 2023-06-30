@@ -9,7 +9,7 @@
 int N, BS, NUM_THREADS, espaciosMatriz;
 
 double *A, *B, *C, *R, *CD, *DP2;
-int    *D;
+int    *D, *DT2;
 
 double PromA, PromB;
 double MaxA = DBL_MIN, MaxB = DBL_MIN;
@@ -59,6 +59,7 @@ int main(int argc, char * argv[]) {
 	C   = (double *) malloc(sizeof(double) * espaciosMatriz);
 	R   = (double *) malloc(sizeof(double) * espaciosMatriz);
 	D   = (int *)    malloc(sizeof(int)    * espaciosMatriz);
+	DT2 = (int *)    malloc(sizeof(int)    *      41       ); // cache con los posibles valores de D²
 	DP2 = (double *) malloc(sizeof(double) * espaciosMatriz); // cache d^2 ; + 1 espacio para evitar overflow
 
 	int    i;
@@ -66,10 +67,15 @@ int main(int argc, char * argv[]) {
 	// asignaciones
 	for (i = 0; i < espaciosMatriz; ++i) {
 		D[i] = (rand() % 40) + 1; // valores al azar, entre 1 y 40
-		DP2[i] = D[i] * D[i];
 
 		A[i] = B[i] = C[i] = 1.0;
 		R[i] = 0.0;
+	}
+
+	// cachear valores entre 0 y 40 de ^2
+	for (int i = 0; i < 41; i++)
+	{
+		DT2[i] = i * i;
 	}
 
 
@@ -146,6 +152,11 @@ void * hiloOperacion(void *ptr) {
 	double MinAlocal = DBL_MIN, MinBlocal = DBL_MAX;
 
 	double TotalAlocal = 0.0, TotalBlocal = 0.0;
+
+	for (i = start; i < end; i++)
+	{
+		DP2[i] = DT2[D[i]]; // donde DT2 era el cache de resultados indexado por i
+	}
 
 	// sacar max, min y prom
 	// se toman todos los elementos por igual, asi que no importa seguir los ordenes

@@ -36,7 +36,7 @@ int main(int argc, char * argv[]) {
 
 	// declararaciones
 	double *A, *B, *C, *R, *CD, *DP2;
-	int    *D;
+	int    *D, *DT2;
 
 	double PromA, PromB;
 	double MaxA = DBL_MIN, MaxB = DBL_MIN;
@@ -52,22 +52,22 @@ int main(int argc, char * argv[]) {
 	C   = (double *) malloc(sizeof(double) * espaciosMatriz);
 	R   = (double *) malloc(sizeof(double) * espaciosMatriz);
 	D   = (int *)    malloc(sizeof(int)    * espaciosMatriz);
+	DT2 = (int *)    malloc(sizeof(int)    *      41       ); // cache con los posibles valores de D²
 	DP2 = (double *) malloc(sizeof(double) * espaciosMatriz); // cache d^2 ; + 1 espacio para evitar overflow
 
 	// asignaciones
 
 	for (i = 0; i < espaciosMatriz; ++i) {
 		D[i] = (rand() % 40) + 1; // valores al azar, entre 1 y 40
-		DP2[i] = D[i] * D[i];
 
 		A[i] = B[i] = C[i] = 1.0;
 		R[i] = 0.0;
 	}
 
-	// Cachear un arreglo con pow2 D
-	// pueden ser de 1 a 40, y C es zero-indexed, asi que...
-	for (i = 0; i < 41; ++i) {
-		DP2[i] = (double) (i * i);
+	// cachear valores entre 0 y 40 de ^2
+	for (int i = 0; i < 41; i++)
+	{
+		DT2[i] = i * i;
 	}
 
 	double tickComienzo, tickFin, escalar;
@@ -82,6 +82,13 @@ int main(int argc, char * argv[]) {
 
 	#pragma omp parallel
 	{
+		// Cachear DP2
+		#pragma omp for private(i) schedule(static) nowait
+		for (i = 0; i < espaciosMatriz; i++)
+		{
+			DP2[i] = DT2[D[i]]; // donde DT2 era el cache de resultados indexado por i
+		}
+
 		// sacar max, min y prom
 		// se toman todos los elementos por igual, asi que no importa seguir los ordenes
 		#pragma omp for private(i) reduction(+: TotalA, TotalB) reduction(min: MinA, MinB) reduction(max: MaxA, MaxB)

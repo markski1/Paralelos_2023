@@ -1,0 +1,7 @@
+Q: Compile y ejecute ambos códigos usando P={4,8,16} (no importa que el número de núcleos sea menor que la cantidad de procesos). ¿Cuál de los dos retorna antes el control?
+
+A: La versión no bloqueante vuelve a obtener el control inmediatamente, aunque obviamente sin haber recibido el mensaje.
+
+Q: En el caso de la versión no bloqueante, ¿qué sucede si se elimina la operación MPI_Wait() (línea 52)? ¿Se imprimen correctamente los mensajes enviados? ¿Por qué?
+
+A: Se imprime el contenido inicial del buffer (en este caso, explicitamente, "No deberia estar leyendo esta frase."). Se debe a que estoy continuando la ejecución sin haber primero esperado a recibir un dato necesario para finalizar la tarea.

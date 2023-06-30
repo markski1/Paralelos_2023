@@ -1,0 +1,1 @@
+El algoritmo non-blocking-ring.c requiere mucho menos tiempo de comunicación. Con las funciones Irecv MPI se encarga de recibir los datos y colocarlos en su buffer, "en el fondo", permitiendo que el programa continue haciendo cualquier otro tipo de ejecución que no requiera ese dato.
